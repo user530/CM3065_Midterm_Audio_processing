@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>CM3065 Exercise 1</title>
+    <link rel="stylesheet" href="style.css" />
+
+    <!-- p5 -->
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.11.11/lib/p5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.11.11/lib/addons/p5.sound.min.js"></script>
+</head>
+<body>
+    <div id="app">
+        <div id="main" class="column loose">
+            <h1>Exercise 1 — Audio Effects App</h1>
+
+            <section class="card">
+                <div class="column">
+                    <h2>Transport</h2>
+                    <div class="row" id="transportRow"></div>
+                    <div class="row small-text" id="transportStatus">Status: not loaded</div>
+                </div>
+            </section>
+
+            <section class="card">
+                <div class="column">
+                    <h2>Spectrum</h2>
+
+                    <div class="grid">
+                        <div>
+                            <div class="small-text"><b>Original (Dry)</b></div>
+                            <div id="drySpectrumHolder"></div>
+                        </div>
+                        <div>
+                            <div class="small-text"><b>Processed (Wet)</b></div>
+                            <div id="wetSpectrumHolder"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card">
+                <div class="column">
+
+                    <div class="column">
+                        <h2>Effects Chain</h2>
+                        <div class="small-text mono">
+                            Sound File -> Low Pass -> Distortion -> Compressor -> Reverb -> Master Volume -> Output
+                        </div>
+                    </div>
+
+                    <div class="grid">
+                        <div class="column tight effect">
+                            <h3>Low pass</h3>
+                            <div id="lowPassControls"></div>
+                        </div>
+
+                        <div class="column tight effect">
+                            <h3>Distortion</h3>
+                            <div id="distControls"></div>
+                        </div>
+
+                        <div class="column tight effect">
+                            <h3>Compressor</h3>
+                            <div id="compControls"></div>
+                        </div>
+
+                        <div class="column tight effect">
+                            <h3>Reverb</h3>
+                            <div id="revControls"></div>
+                        </div>
+
+                        <div class="column tight effect">
+                            <h3>Master</h3>
+                            <div id="masterControls"></div>
+                        </div>
+
+                        <div class="column tight effect">
+                            <h3>Record</h3>
+                            <div id="recControls"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    
+        <aside id="library">
+            <div class="column loose">
+                <h1>Sound Library</h2>
+
+                <section class="card">
+                    <div class="column">
+                        <h2>Storage</h3>
+                        <div class="small-text">
+                            PLACEHOLDER FOR RECORDS
+                        </div>
+                    </div>
+                </section>
+    
+                <section class="card">
+                    <div class="column">
+                        <h2>Saved Presets</h3>
+                        <div class="row">
+                            <button id="btnSavePreset">Save current preset</button>
+                            <button id="btnClearPreset" class="secondary">Reset preset</button>
+                        </div>
+                        <div id="libraryList" class="list"></div>
+                    </div>
+                </section>
+            </div>
+        </aside>
+    </div>
+    <script src="sketch.js"></script>
+</body>
+</html>
