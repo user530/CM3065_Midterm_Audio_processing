@@ -1,6 +1,10 @@
 // === GUI SETUP ===
 let ui = {};
 const presetStoreKey = 'AUDIO_EFFECT_PRESET';
+const DEBUG_MODE = true;
+
+// EXPOSE FOR MANUAL TESTING
+debug_expose();
 
 function setup() {
     noCanvas();
@@ -51,14 +55,97 @@ function buildTransportUI() {
 
 function buildEffectControlsUI() {
     // Control sliders
-    ui.lpCutoff = addSlider('#lowPassControls', 'Cutoff (Hz)', 50, 20000, 8000, 1);
-    ui.lpRes = addSlider('#lowPassControls', 'Resonance (Q)', 0.1, 20, 1, 0.1);
 
+    // LOW PASS
+    ui.lpCutoff = addSlider('#lowPassControls', 'Cutoff (Hz)', 0, 1, 0.9, 0.01);
+    ui.lpRes = addSlider('#lowPassControls', 'Resonance (Q)', 0.1, 20, 1, 0.1);
+    ui.lpDW = addSlider('#lowPassControls', 'Dry/Wet', 0, 1, 0.0, 0.01);
+    ui.lpOL = addSlider('#lowPassControls', 'Output Level', 0, 1, 1.0, 0.01);
+
+    addSliderListener(
+        ui.lpCutoff, 
+        val => {
+            if(!effectLowPass) return;
+
+            // Transform normalized value to frequency
+            const freq = mapLog(val, 20, 20000);
+            effectLowPass.freq(freq);
+
+            debug_log(
+                'Low-Pass Cutoff', 
+                Math.round(freq), 
+                'Low-Pass Resonance',
+                ui.lpRes.value(),
+                'Low-Pass Dry/Wet', 
+                ui.lpDW.value(), 
+                'Low-Pass Output Level', 
+                ui.lpOL.value()
+            );
+        }
+    );
+
+    addSliderListener(
+        ui.lpRes, 
+        val => {
+            if(!effectLowPass) return;
+            effectLowPass.res(val);
+            debug_log(
+                'Low-Pass Cutoff', 
+                ui.lpCutoff.value(), 
+                'Low-Pass Resonance',
+                val,
+                'Low-Pass Dry/Wet', 
+                ui.lpDW.value(), 
+                'Low-Pass Output Level', 
+                ui.lpOL.value()
+            );
+        }
+    );
+
+    addSliderListener(
+        ui.lpDW, 
+        val => {
+            if(!effectLowPass) return;
+            effectLowPass.drywet(val);
+            debug_log(
+                'Low-Pass Cutoff', 
+                ui.lpCutoff.value(), 
+                'Low-Pass Resonance',
+                ui.lpRes.value(),
+                'Low-Pass Dry/Wet', 
+                val, 
+                'Low-Pass Output Level', 
+                ui.lpOL.value()
+            );
+        }
+    );
+
+    addSliderListener(
+        ui.lpOL, 
+        val => {
+            if(!effectLowPass) return;
+            effectLowPass.amp(val);
+            debug_log(
+                'Low-Pass Cutoff', 
+                ui.lpCutoff.value(), 
+                'Low-Pass Resonance',
+                ui.lpRes.value(),
+                'Low-Pass Dry/Wet', 
+                ui.lpDW.value(), 
+                'Low-Pass Output Level', 
+                val
+            );
+        }
+    )
+
+    // WAVESHAPER DISTORTION
     ui.distAmt = addSlider('#distControls', 'Amount', 0, 1, 0.0, 0.01);
 
+    // DYNAMIC COMPRESSOR
     ui.compThresh = addSlider('#compControls', 'Threshold', -60, 0, -24, 1);
     ui.compRatio = addSlider('#compControls', 'Ratio', 1, 20, 4, 0.1);
 
+    // REVERB FILTER
     ui.revTime = addSlider('#revControls', 'Time (s)', 0, 10, 2.5, 0.1);
     ui.revMix = addSlider('#revControls', 'Mix', 0, 1, 0.3, 0.01);
 
@@ -213,7 +300,16 @@ function addSlider(parentSel, labelText, min, max, value, step, onChange) {
 function refreshSliderUI(slider) {
     if (!slider?._labelElem) return;
 
-    slider._labelElem.html(`${slider._labelTxt}: ${slider.value()}`);
+    // Slider text value
+    let textVal = slider.value();
+
+    // Special logic for logarithmic scale
+    if (slider === ui.lpCutoff){
+        const freq = mapLog(Number(textVal), 20, 20000);
+        textVal = Math.round(freq) + ' Hz';
+    }
+
+    slider._labelElem.html(`${slider._labelTxt}: ${textVal}`);
 }
 
 function addSliderListener(slider, handler) {
@@ -237,6 +333,8 @@ function readEffectsFromUI() {
     return {
         lpCutoff: Number(ui.lpCutoff.value()),
         lpRes: Number(ui.lpRes.value()),
+        lpDW: Number(ui.lpDW.value()),
+        lpOL: Number(ui.lpOL.value()),
         distAmt: Number(ui.distAmt.value()),
         compThresh: Number(ui.compThresh.value()),
         compRatio: Number(ui.compRatio.value()),
@@ -249,6 +347,8 @@ function readEffectsFromUI() {
 function writeEffectsToUI(e) {
     setSliderValue(ui.lpCutoff, e.lpCutoff);
     setSliderValue(ui.lpRes, e.lpRes);
+    setSliderValue(ui.lpDW, e.lpDW);
+    setSliderValue(ui.lpOL, e.lpOL);
     setSliderValue(ui.distAmt, e.distAmt);
     setSliderValue(ui.compThresh, e.compThresh);
     setSliderValue(ui.compRatio, e.compRatio);
@@ -261,6 +361,8 @@ function setEffectsToDefaults() {
     writeEffectsToUI({
         lpCutoff: 8000,
         lpRes: 1,
+        lpDW: 0,
+        lpOL: 1.0,
         distAmt: 0.0,
         compThresh: -24,
         compRatio: 4,
@@ -291,6 +393,34 @@ function savePresets(arr) {
 
 function setStatus(text) {
     select('#transportStatus').html(text);
+}
+
+function debug_log(...args) {
+    if(!DEBUG_MODE) return;
+    console.log('[DEBUG MSG]: ', ...args);
+}
+
+function debug_expose() {
+    if(!DEBUG_MODE) return;
+    window.__app = {
+      get sound() { return currentSound; },
+      get lowpass() { return effectLowPass; },
+      get dist() { return effectDistortion; },
+      get comp() { return effectCompressor; },
+      get rev() { return effectReverb; },
+      get master() { return masterGainNode; },
+      ui
+    };
+
+    debug_log('Exposed window.__app for debugging: sound, lowpass, dist, comp, rev, master, ui');
+}
+
+function mapLog(norm, minFreq, maxFreq) {
+    const minLog = Math.log(minFreq);
+    const maxLog = Math.log(maxFreq);
+    const scale = (maxLog - minLog) * norm + minLog;
+
+    return Math.exp(scale);
 }
 
 // === AUDIO LOADING ===
@@ -331,11 +461,10 @@ function onSoundLoaded(sound, label) {
     ensureMasterNode();
     currentSound = sound;
 
-    // Disconnect from default output
-    currentSound.disconnect();
-
-    // Plug it into master gain node instead
-    currentSound.connect(masterGainNode);
+    // Setup effects chain
+    connectSoundToEffectsChain(sound);
+    // Apply default params
+    applyAllEffectParamsFromUI();
 
     // Update UI on ending
     currentSound.onended(
@@ -392,7 +521,7 @@ function startPlayback() {
         }, 0);
     }
 
-    setStatus(isLooping ? 'Status: Playing (loop mode).' : 'Status: Playing.');
+    setStatus(isLoopMode ? 'Status: Playing (loop mode).' : 'Status: Playing.');
 }
 
 function stopToStart() {
@@ -440,4 +569,55 @@ function unloadCurrentSound() {
         currentSound.stop(); 
     } catch {}
     currentSound = null;
+}
+
+// === SOUND EFFECTS ===
+let effectLowPass = null;
+let effectDistortion = null;
+let effectCompressor = null;
+let effectReverb = null;
+
+function ensureEffectsChain() {
+    // Skip if already exists
+    if (effectLowPass) return;
+
+    effectLowPass = new p5.LowPass();
+    effectDistortion = new p5.Distortion();
+    effectCompressor = new p5.Compressor();
+    effectReverb = new p5.Reverb();
+}
+
+function connectSoundToEffectsChain(sound) {
+    // Ensure we have full sound chain
+    ensureMasterNode();
+    ensureEffectsChain();
+
+    // Disconnect default output so we don't double-route.
+    effectLowPass.disconnect();
+    effectDistortion.disconnect();
+    effectCompressor.disconnect();
+    effectReverb.disconnect();
+    sound.disconnect();
+
+    // Plug sound chain
+    sound.connect(effectLowPass);
+    effectLowPass.connect(effectDistortion);
+    effectDistortion.connect(effectCompressor);
+    effectCompressor.connect(effectReverb);
+    effectReverb.connect(masterGainNode);
+}
+
+function applyAllEffectParamsFromUI() {
+  if (!effectLowPass) return;
+
+  effectLowPass.freq(Number(ui.lpCutoff.value()));
+  effectLowPass.res(Number(ui.lpRes.value()));
+  effectLowPass.drywet(Number(ui.lpDW.value()));
+  effectLowPass.amp(Number(ui.lpOL.value()));
+
+  debug_log('Applied LP params from UI',
+      'cutoff', ui.lpCutoff.value(),
+      'res', ui.lpRes.value(),
+      'dw', ui.lpDW.value(),
+      'ol', ui.lpOL.value());
 }
