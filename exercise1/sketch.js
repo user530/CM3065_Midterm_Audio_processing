@@ -86,14 +86,26 @@ function buildEffectControlsUI() {
     ui.compOL = addSlider('#compControls', 'Output Level', 0, 1, 1.0, 0.01);
 
     // Apply compressor handlers
-    for (const elem of [ui.compThresh, ui.compRatio, ui.compAttack, ui.compKnee, ui.compRelease, ui.compDW, ui.compOL]) {
+    for (const elem of [ui.compThresh, ui.compRatio, ui.compAttack, ui.compKnee, ui.compRelease, ui.compDW, ui.compOL]) 
         addCustomHandler(elem, () => applyCompressorFromUI());
-    }
 
     // REVERB FILTER
-    ui.revTime = addSlider('#revControls', 'Time (s)', 0, 10, 2.5, 0.1);
-    ui.revMix = addSlider('#revControls', 'Mix', 0, 1, 0.3, 0.01);
+    ui.revTime = addSlider('#revControls', 'Time (s)', 0, 10, 3, 0.1);
+    ui.revDecay = addSlider('#revControls', 'Decay Rate (%)', 0, 100, 2, 1);
+    ui.revReverse = addDropdown(
+        '#revControls', 
+        'Reverse', 
+        [{ label: 'Off', value: '0' }, { label: 'On', value: '1' }], 
+        '0'
+    );
+    ui.revDW = addSlider('#revControls', 'Dry/Wet', 0, 1, 0.0, 0.01);
+    ui.revOL = addSlider('#revControls', 'Output Level', 0, 1, 1.0, 0.01);
 
+    // Apply reverb handlers
+    for (const elem of [ui.revTime, ui.revDecay, ui.revReverse, ui.revDW, ui.revOL])
+        addCustomHandler(elem, () => applyReverbFromUI());
+
+    // MASTER GAIN
     ui.masterGain = addSlider('#masterControls', 'Gain', 0, 1, 0.8, 0.01);
     addCustomHandler(ui.masterGain, () => applyMasterGainFromUI());
 
@@ -291,10 +303,12 @@ function readEffectsFromUI() {
         lpRes: Number(ui.lpRes.value()),
         lpDW: Number(ui.lpDW.value()),
         lpOL: Number(ui.lpOL.value()),
+
         distAmt: Number(ui.distAmt.value()),
         distOS: ui.distOS.value(),
         distDW: Number(ui.distDW.value()),
         distOL: Number(ui.distOL.value()),
+
         compAttack: Number(ui.compAttack.value()),
         compKnee: Number(ui.compKnee.value()),
         compRelease: Number(ui.compRelease.value()),
@@ -302,8 +316,13 @@ function readEffectsFromUI() {
         compThresh: Number(ui.compThresh.value()),
         compDW: Number(ui.compDW.value()),
         compOL: Number(ui.compOL.value()),
+
         revTime: Number(ui.revTime.value()),
-        revMix: Number(ui.revMix.value()),
+        revDecay: Number(ui.revDecay.value()),
+        revReverse: ui.revReverse.value(),
+        revDW: Number(ui.revDW.value()),
+        revOL: Number(ui.revOL.value()),
+
         masterGain: Number(ui.masterGain.value()),
     };
 }
@@ -328,7 +347,11 @@ function writeEffectsToUI(e) {
     setSliderValue(ui.compOL, e.compOL);
 
     setSliderValue(ui.revTime, e.revTime);
-    setSliderValue(ui.revMix, e.revMix);
+    setSliderValue(ui.revDecay, e.revDecay);
+    setDropdownValue(ui.revReverse, e.revReverse);
+    setSliderValue(ui.revDW, e.revDW);
+    setSliderValue(ui.revOL, e.revOL);
+
     setSliderValue(ui.masterGain, e.masterGain);
 }
 
@@ -352,8 +375,12 @@ function setEffectsToDefaults() {
         compDW: 0.0,
         compOL: 1.0,
 
-        revTime: 2.5,
-        revMix: 0.3,
+        revTime: 3,
+        revDecay: 2,
+        revReverse: '0',
+        revDW: 0.0,
+        revOL: 1.0,
+
         masterGain: 0.8,
     });
 }
@@ -641,8 +668,9 @@ function applyAllEffectParamsFromUI() {
     applyLowPassFromUI();
     applyDistortionFromUI();
     applyCompressorFromUI();
-
+    applyReverbFromUI();
     applyMasterGainFromUI();
+
     debug_log('Applied all effect params!');
 }
 
@@ -653,8 +681,8 @@ function applyLowPassFromUI() {
     const cutoffFreq = mapLog(normalized, 20, 20000);
 
     const res = Number(ui.lpRes.value());
-    const dw  = Number(ui.lpDW.value());
-    const ol  = Number(ui.lpOL.value());
+    const dw = Number(ui.lpDW.value());
+    const ol = Number(ui.lpOL.value());
 
     // Set lowpass param
     effectLowPass.freq(cutoffFreq);
@@ -719,5 +747,28 @@ function applyCompressorFromUI() {
         'Compressor Release', rel,
         'Compressor Dry/Wet', dw,
         'Compressor Output Level', ol
+    );
+}
+
+function applyReverbFromUI() {
+    if (!effectReverb) return;
+
+    const seconds = Number(ui.revTime.value());
+    const decayRate = Number(ui.revDecay.value());
+    const reverse = (ui.revReverse.value() === '1');
+    const dw = Number(ui.revDW.value());
+    const ol = Number(ui.revOL.value());
+
+    // Set reverb params
+    effectReverb.set(seconds, decayRate, reverse);
+    effectReverb.drywet(dw);
+    effectReverb.amp(ol);
+
+    debug_log(
+        'Reverb Duration', seconds,
+        'Reverb Decay', decayRate,
+        'Reverb Reverse', reverse === ui.revReverse.value() === '1',
+        'Reverb Dry/Wet', dw,
+        'Reverb Output Level', ol
     );
 }
