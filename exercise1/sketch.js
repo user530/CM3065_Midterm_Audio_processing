@@ -121,16 +121,20 @@ function buildLibraryUI() {
 
     btnSave.mousePressed(() => {
         const presets = loadPresets();
+        const name = prompt('Enter preset name:', `Preset ${presets.length + 1}`);
+        if(!name) return;
+
         const item = {
             id: crypto.randomUUID(),
-            name: `Preset ${presets.length + 1}`,
+            name,
             createdAt: new Date().toISOString(),
             effects: readEffectsFromUI(),
         };
         presets.unshift(item);
+
         savePresets(presets);
         renderLibraryList();
-        setStatus('Status: Saved preset (settings only).');
+        setStatus(`Status: Saved preset ${name}.`);
     });
 
     btnClear.mousePressed(() => {
@@ -171,6 +175,7 @@ function renderLibraryList() {
         btnLoad.mousePressed(
             () => {
                 writeEffectsToUI(p.effects);
+                applyAllEffectParamsFromUI();
                 setStatus(`Status: Loaded preset '${p.name}'.`);
             }
         );
