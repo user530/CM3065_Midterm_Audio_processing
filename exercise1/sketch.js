@@ -62,84 +62,19 @@ function buildEffectControlsUI() {
     ui.lpDW = addSlider('#lowPassControls', 'Dry/Wet', 0, 1, 0.0, 0.01);
     ui.lpOL = addSlider('#lowPassControls', 'Output Level', 0, 1, 1.0, 0.01);
 
-    addSliderListener(
-        ui.lpCutoff, 
-        val => {
-            if(!effectLowPass) return;
-
-            // Transform normalized value to frequency
-            const freq = mapLog(val, 20, 20000);
-            effectLowPass.freq(freq);
-
-            debug_log(
-                'Low-Pass Cutoff', 
-                Math.round(freq), 
-                'Low-Pass Resonance',
-                ui.lpRes.value(),
-                'Low-Pass Dry/Wet', 
-                ui.lpDW.value(), 
-                'Low-Pass Output Level', 
-                ui.lpOL.value()
-            );
-        }
-    );
-
-    addSliderListener(
-        ui.lpRes, 
-        val => {
-            if(!effectLowPass) return;
-            effectLowPass.res(val);
-            debug_log(
-                'Low-Pass Cutoff', 
-                ui.lpCutoff.value(), 
-                'Low-Pass Resonance',
-                val,
-                'Low-Pass Dry/Wet', 
-                ui.lpDW.value(), 
-                'Low-Pass Output Level', 
-                ui.lpOL.value()
-            );
-        }
-    );
-
-    addSliderListener(
-        ui.lpDW, 
-        val => {
-            if(!effectLowPass) return;
-            effectLowPass.drywet(val);
-            debug_log(
-                'Low-Pass Cutoff', 
-                ui.lpCutoff.value(), 
-                'Low-Pass Resonance',
-                ui.lpRes.value(),
-                'Low-Pass Dry/Wet', 
-                val, 
-                'Low-Pass Output Level', 
-                ui.lpOL.value()
-            );
-        }
-    );
-
-    addSliderListener(
-        ui.lpOL, 
-        val => {
-            if(!effectLowPass) return;
-            effectLowPass.amp(val);
-            debug_log(
-                'Low-Pass Cutoff', 
-                ui.lpCutoff.value(), 
-                'Low-Pass Resonance',
-                ui.lpRes.value(),
-                'Low-Pass Dry/Wet', 
-                ui.lpDW.value(), 
-                'Low-Pass Output Level', 
-                val
-            );
-        }
-    )
+    // Apply lowpass handlers
+    for (const elem of [ui.lpCutoff, ui.lpRes, ui.lpDW, ui.lpOL])
+        addCustomHandler(elem, () => applyLowPassFromUI());
 
     // WAVESHAPER DISTORTION
     ui.distAmt = addSlider('#distControls', 'Amount', 0, 1, 0.0, 0.01);
+    ui.distOS = addDropdown('#distControls', 'Oversample', ['none', '2x', '4x'], 'none');
+    ui.distDW = addSlider('#distControls', 'Dry/Wet', 0, 1, 0.0, 0.01);
+    ui.distOL = addSlider('#distControls', 'Output Level', 0, 1, 1.0, 0.01);
+
+    // Apply distortion handlers
+    for (const elem of [ui.distAmt, ui.distOS, ui.distDW, ui.distOL])
+        addCustomHandler(elem, () => applyDistortionFromUI());
 
     // DYNAMIC COMPRESSOR
     ui.compThresh = addSlider('#compControls', 'Threshold', -60, 0, -24, 1);
@@ -150,7 +85,7 @@ function buildEffectControlsUI() {
     ui.revMix = addSlider('#revControls', 'Mix', 0, 1, 0.3, 0.01);
 
     ui.masterGain = addSlider('#masterControls', 'Gain', 0, 1, 0.8, 0.01);
-    addSliderListener(ui.masterGain, () => applyMasterGainFromUI());
+    addCustomHandler(ui.masterGain, () => applyMasterGainFromUI());
 
     ui.btnRec = createButton('Record');
     ui.btnRec.addClass('record');
@@ -312,7 +247,7 @@ function refreshSliderUI(slider) {
     slider._labelElem.html(`${slider._labelTxt}: ${textVal}`);
 }
 
-function addSliderListener(slider, handler) {
+function addCustomHandler(slider, handler) {
     if (!slider || typeof handler !== 'function') return;
 
     slider._handlers = slider._handlers || [];
@@ -329,6 +264,17 @@ function setSliderValue(slider, val) {
     );
 }
 
+function setDropdownValue(dropdown, val) {
+    if (!dropdown) return;
+
+    dropdown.selected(val);
+    
+    // Emulate change of dropdown option
+    dropdown.elt.dispatchEvent(
+        new Event('change', { bubbles: true })
+    );
+}
+
 function readEffectsFromUI() {
     return {
         lpCutoff: Number(ui.lpCutoff.value()),
@@ -336,6 +282,9 @@ function readEffectsFromUI() {
         lpDW: Number(ui.lpDW.value()),
         lpOL: Number(ui.lpOL.value()),
         distAmt: Number(ui.distAmt.value()),
+        distOS: ui.distOS.value(),
+        distDW: Number(ui.distDW.value()),
+        distOL: Number(ui.distOL.value()),
         compThresh: Number(ui.compThresh.value()),
         compRatio: Number(ui.compRatio.value()),
         revTime: Number(ui.revTime.value()),
@@ -350,6 +299,9 @@ function writeEffectsToUI(e) {
     setSliderValue(ui.lpDW, e.lpDW);
     setSliderValue(ui.lpOL, e.lpOL);
     setSliderValue(ui.distAmt, e.distAmt);
+    setDropdownValue(ui.distOS, e.distOS);
+    setSliderValue(ui.distDW, e.distDW);
+    setSliderValue(ui.distOL, e.distOL);
     setSliderValue(ui.compThresh, e.compThresh);
     setSliderValue(ui.compRatio, e.compRatio);
     setSliderValue(ui.revTime, e.revTime);
@@ -364,12 +316,59 @@ function setEffectsToDefaults() {
         lpDW: 0,
         lpOL: 1.0,
         distAmt: 0.0,
+        distOS: 'none',
+        distDW: 0.0,
+        distOL: 1.0,
         compThresh: -24,
         compRatio: 4,
         revTime: 2.5,
         revMix: 0.3,
         masterGain: 0.8,
     });
+}
+
+function addDropdown(parentSel, labelText, options, defaultValue, onChange) {
+    const parent = select(parentSel);
+    const wrapper = createDiv().addClass('control');
+
+    const label = createElement('label', `${labelText}:`);
+
+    const dropdown = createSelect();
+    dropdown._labelTxt = labelText;
+    dropdown._handlers = [];
+
+    // Build options (either strings or {value: X, label: Y} dicts)
+    for (const opt of options) {
+        if (typeof opt === 'string') dropdown.option(opt, opt);
+        else dropdown.option(opt.label, opt.value);
+    }
+
+    // Default value
+    if (defaultValue !== undefined && defaultValue !== null) {
+        dropdown.selected(defaultValue);
+    }
+
+    // Populate handlers
+    if (typeof onChange === 'function') dropdown._handlers.push(onChange);
+
+    const handleChange = () => {
+        const val = dropdown.value();
+        // Fire up all handlers
+        for (const handler of dropdown._handlers) 
+            handler(val);
+    };
+
+    // Connect handler to the dropdown
+    dropdown.changed(handleChange);
+
+    // Fire once to apply defaults
+    handleChange();
+
+    wrapper.child(label);
+    wrapper.child(dropdown);
+    parent.child(wrapper);
+
+    return dropdown;
 }
 
 // === LOCAL STORAGE ===
@@ -608,16 +607,54 @@ function connectSoundToEffectsChain(sound) {
 }
 
 function applyAllEffectParamsFromUI() {
-  if (!effectLowPass) return;
+    applyLowPassFromUI();
+    applyDistortionFromUI();
 
-  effectLowPass.freq(Number(ui.lpCutoff.value()));
-  effectLowPass.res(Number(ui.lpRes.value()));
-  effectLowPass.drywet(Number(ui.lpDW.value()));
-  effectLowPass.amp(Number(ui.lpOL.value()));
+    applyMasterGainFromUI();
+    debug_log('Applied all effect params!');
+}
 
-  debug_log('Applied LP params from UI',
-      'cutoff', ui.lpCutoff.value(),
-      'res', ui.lpRes.value(),
-      'dw', ui.lpDW.value(),
-      'ol', ui.lpOL.value());
+function applyLowPassFromUI() {
+    if (!effectLowPass) return;
+
+    const normalized = Number(ui.lpCutoff.value());
+    const cutoffFreq = mapLog(normalized, 20, 20000);
+
+    const res = Number(ui.lpRes.value());
+    const dw  = Number(ui.lpDW.value());
+    const ol  = Number(ui.lpOL.value());
+
+    // Set lowpass param
+    effectLowPass.freq(cutoffFreq);
+    effectLowPass.res(res);
+    effectLowPass.drywet(dw);
+    effectLowPass.amp(ol);
+
+    debug_log(
+        'LowPass cutoffHz', Math.round(cutoffFreq),
+        'res', res,
+        'dw', dw,
+        'ol', ol
+    );
+}
+
+function applyDistortionFromUI() {
+    if (!effectDistortion) return;
+
+    const amount = Number(ui.distAmt.value());
+    const oversample = ui.distOS.value();
+    const dw = Number(ui.distDW.value());
+    const ol = Number(ui.distOL.value());
+
+    // Set distortion params
+    effectDistortion.set(amount, oversample);
+    effectDistortion.drywet(dw);
+    effectDistortion.amp(ol);
+
+    debug_log(
+        'Distortion Amount', amount,
+        'Distortion Oversample', oversample,
+        'Distortion Dry/Wet', dw,
+        'Distortion Output Level', ol
+    );
 }
