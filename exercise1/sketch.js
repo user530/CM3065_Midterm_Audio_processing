@@ -77,8 +77,18 @@ function buildEffectControlsUI() {
         addCustomHandler(elem, () => applyDistortionFromUI());
 
     // DYNAMIC COMPRESSOR
-    ui.compThresh = addSlider('#compControls', 'Threshold', -60, 0, -24, 1);
-    ui.compRatio = addSlider('#compControls', 'Ratio', 1, 20, 4, 0.1);
+    ui.compAttack = addSlider('#compControls', 'Attack (s)', 0, 1, 0.003, 0.001);
+    ui.compKnee = addSlider('#compControls', 'Knee (dB)', 0, 40, 30, 1);
+    ui.compRelease = addSlider('#compControls', 'Release (s)', 0, 1, 0.25, 0.01);
+    ui.compRatio = addSlider('#compControls', 'Ratio', 1, 20, 12, 0.1);
+    ui.compThresh = addSlider('#compControls', 'Threshold (dB)', -100, 0, -24, 1);
+    ui.compDW = addSlider('#compControls', 'Dry/Wet', 0, 1, 0.0, 0.01);
+    ui.compOL = addSlider('#compControls', 'Output Level', 0, 1, 1.0, 0.01);
+
+    // Apply compressor handlers
+    for (const elem of [ui.compThresh, ui.compRatio, ui.compAttack, ui.compKnee, ui.compRelease, ui.compDW, ui.compOL]) {
+        addCustomHandler(elem, () => applyCompressorFromUI());
+    }
 
     // REVERB FILTER
     ui.revTime = addSlider('#revControls', 'Time (s)', 0, 10, 2.5, 0.1);
@@ -285,8 +295,13 @@ function readEffectsFromUI() {
         distOS: ui.distOS.value(),
         distDW: Number(ui.distDW.value()),
         distOL: Number(ui.distOL.value()),
-        compThresh: Number(ui.compThresh.value()),
+        compAttack: Number(ui.compAttack.value()),
+        compKnee: Number(ui.compKnee.value()),
+        compRelease: Number(ui.compRelease.value()),
         compRatio: Number(ui.compRatio.value()),
+        compThresh: Number(ui.compThresh.value()),
+        compDW: Number(ui.compDW.value()),
+        compOL: Number(ui.compOL.value()),
         revTime: Number(ui.revTime.value()),
         revMix: Number(ui.revMix.value()),
         masterGain: Number(ui.masterGain.value()),
@@ -298,12 +313,20 @@ function writeEffectsToUI(e) {
     setSliderValue(ui.lpRes, e.lpRes);
     setSliderValue(ui.lpDW, e.lpDW);
     setSliderValue(ui.lpOL, e.lpOL);
+
     setSliderValue(ui.distAmt, e.distAmt);
     setDropdownValue(ui.distOS, e.distOS);
     setSliderValue(ui.distDW, e.distDW);
     setSliderValue(ui.distOL, e.distOL);
+
+    setSliderValue(ui.compAttack, e.compAttack);
+    setSliderValue(ui.compKnee, e.compKnee);
+    setSliderValue(ui.compRelease, e.compRelease);
     setSliderValue(ui.compThresh, e.compThresh);
     setSliderValue(ui.compRatio, e.compRatio);
+    setSliderValue(ui.compDW, e.compDW);
+    setSliderValue(ui.compOL, e.compOL);
+
     setSliderValue(ui.revTime, e.revTime);
     setSliderValue(ui.revMix, e.revMix);
     setSliderValue(ui.masterGain, e.masterGain);
@@ -311,16 +334,24 @@ function writeEffectsToUI(e) {
 
 function setEffectsToDefaults() {
     writeEffectsToUI({
-        lpCutoff: 8000,
+        lpCutoff: 0.9,
         lpRes: 1,
         lpDW: 0,
         lpOL: 1.0,
+
         distAmt: 0.0,
         distOS: 'none',
         distDW: 0.0,
         distOL: 1.0,
-        compThresh: -24,
+
+        compAttack: 0.003,
+        compKnee: 30,
+        compRelease: 0.25,
         compRatio: 4,
+        compThresh: -24,
+        compDW: 0.0,
+        compOL: 1.0,
+
         revTime: 2.5,
         revMix: 0.3,
         masterGain: 0.8,
@@ -609,6 +640,7 @@ function connectSoundToEffectsChain(sound) {
 function applyAllEffectParamsFromUI() {
     applyLowPassFromUI();
     applyDistortionFromUI();
+    applyCompressorFromUI();
 
     applyMasterGainFromUI();
     debug_log('Applied all effect params!');
@@ -631,10 +663,10 @@ function applyLowPassFromUI() {
     effectLowPass.amp(ol);
 
     debug_log(
-        'LowPass cutoffHz', Math.round(cutoffFreq),
-        'res', res,
-        'dw', dw,
-        'ol', ol
+        'LowPass Cutoff Frequence', Math.round(cutoffFreq),
+        'LowPass Resonance', res,
+        'LowPass Dry/Wet', dw,
+        'LowPass Output Level', ol
     );
 }
 
@@ -656,5 +688,36 @@ function applyDistortionFromUI() {
         'Distortion Oversample', oversample,
         'Distortion Dry/Wet', dw,
         'Distortion Output Level', ol
+    );
+}
+
+function applyCompressorFromUI() {
+    if (!effectCompressor) return;
+
+    const attack = Number(ui.compAttack.value());
+    const knee = Number(ui.compKnee.value());
+    const rel = Number(ui.compRelease.value());
+    const ratio = Number(ui.compRatio.value());
+    const thr = Number(ui.compThresh.value());
+    const dw = Number(ui.compDW.value());
+    const ol = Number(ui.compOL.value());
+
+    // Apply compressor params
+    effectCompressor.attack(attack);
+    effectCompressor.knee(knee);
+    effectCompressor.release(rel);
+    effectCompressor.ratio(ratio);
+    effectCompressor.threshold(thr);
+    effectCompressor.drywet(dw);
+    effectCompressor.amp(ol);
+
+    debug_log(
+        'Compressor Threshold', thr,
+        'Compressor Ratio', ratio,
+        'Compressor Attack', attack,
+        'Compressor Knee', knee,
+        'Compressor Release', rel,
+        'Compressor Dry/Wet', dw,
+        'Compressor Output Level', ol
     );
 }
