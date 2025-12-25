@@ -7,7 +7,7 @@ const DEBUG_MODE = true;
 debug_expose();
 
 function setup() {
-    noCanvas();
+    setupSpectrumUI();
     buildTransportUI();
     buildEffectControlsUI();
     buildLibraryUI();
@@ -522,6 +522,7 @@ function onSoundLoaded(sound, label) {
     connectSoundToEffectsChain(sound);
     // Apply default params
     applyAllEffectParamsFromUI();
+    connectSpectrumBusses();
 
     // Update UI on ending
     currentSound.onended(
@@ -767,8 +768,106 @@ function applyReverbFromUI() {
     debug_log(
         'Reverb Duration', seconds,
         'Reverb Decay', decayRate,
-        'Reverb Reverse', reverse === ui.revReverse.value() === '1',
+        'Reverb Reverse', reverse,
         'Reverb Dry/Wet', dw,
         'Reverb Output Level', ol
     );
+}
+
+// === SPECTRUM VISUALIZATION ===
+let fftIn, fftOut;
+let busIn, busOut;
+
+function setupSpectrumUI() {
+    const holder = select('#drySpectrumHolder');
+    if (holder) {
+        const canvas = createCanvas(860, 220);
+        canvas.parent(holder);
+    }
+    else{
+        console.error('No spectrum holder found!');
+        return;
+    }
+
+    // Frequency analyzers for input and output
+    fftIn = new p5.FFT(0.8, 1024);
+    fftOut = new p5.FFT(0.8, 1024);
+
+    // Busses for input and output signal
+    busIn = new p5.Gain();
+    busOut = new p5.Gain();
+    
+    // Silence gain nodes to prevent overlapping sound
+    busIn.disconnect();
+    busOut.disconnect();
+
+    debug_log('Spectrum UI ready (FFTs + busses created).');
+}
+
+function connectSpectrumBusses() {
+    if (!currentSound) return;
+
+    // Clear previous bus connections, in needed
+    try { busIn.disconnect(); } catch {}
+    try { busOut.disconnect(); } catch {}
+
+    // Connect IN BUS - original sound
+    currentSound.connect(busIn);
+    fftIn.setInput(busIn);
+
+    // Connect OUT BUS - filtered sound
+    masterGainNode.connect(busOut);
+    fftOut.setInput(busOut);
+
+    debug_log('Spectrum busses connected.');
+}
+
+function draw() {
+    background(255);
+
+    if (!fftIn || !fftOut) {
+        fill(0);
+        text('FFT analyzers are not ready!', 20, 20);
+        return;
+    }
+
+    const inSpec = fftIn.analyze();
+    const outSpec = fftOut.analyze();
+
+    // Debug message
+    if(DEBUG_MODE){
+        fill(0);
+        text(`in[0]=${inSpec[0]} out[0]=${outSpec[0]}`, 20, 10);
+    }
+
+    drawSpectrumBox(inSpec, 20, 30, 400, 170, 'IN (Dry)');
+    drawSpectrumBox(outSpec, 440, 30, 400, 170, 'OUT (Wet)');
+}
+
+function drawSpectrumBox(spec, x, y, w, h, title) {
+    push();
+    
+    // Drawing setup
+    noFill();
+    stroke(0);
+    rect(x, y, w, h);
+    noStroke();
+    fill(0);
+
+    // Text
+    text(title, x + 6, y - 8);
+
+    // Fill bars
+    fill(40);
+
+    const bins = spec.length;
+    const step = Math.max(1, Math.floor(bins / w));
+    for (let i = 0; i < w; i++) {
+        const idx = i * step;
+        const amp = spec[idx] / 255.0;
+        const barH = amp * h;
+        rect(x + i, y + h - barH, 1, barH);
+    }
+
+    pop();
 }
