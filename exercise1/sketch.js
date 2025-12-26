@@ -1,10 +1,7 @@
 // === GUI SETUP ===
 let ui = {};
 const presetStoreKey = 'AUDIO_EFFECT_PRESET';
-const DEBUG_MODE = true;
-
-// EXPOSE FOR MANUAL TESTING
-debug_expose();
+const DEBUG_MODE = false;
 
 function setup() {
     setupSpectrumUI();
@@ -15,6 +12,9 @@ function setup() {
     setupRecording();
     setEffectsToDefaults();
     setStatus('Status: UI loaded. Click "Load default sound" to begin.');
+
+    // EXPOSE FOR MANUAL TESTING
+    debug_expose();
 }
 
 function buildTransportUI() {
@@ -950,6 +950,12 @@ function toggleRecording() {
 
     // Start recording
     if (!isRecording) {
+        // Guard clause
+        if(!currentSound || !currentSound.isPlaying()){
+            setStatus('Status: Start playback before recording.');
+            return;
+        }
+
         recordingFile = new p5.SoundFile();
         recorder.record(recordingFile);
 
@@ -990,7 +996,7 @@ function renderStorageList() {
 
     // Empty asset list
     if (assetWavs.length === 0) {
-        const empty = createDiv('No asset WAVs found (add assets/manifest.json).');
+        const empty = createDiv('No asset WAVs found (add assets/list.json).');
         empty.addClass('small-text');
         wrapper.child(empty);
     } else {
