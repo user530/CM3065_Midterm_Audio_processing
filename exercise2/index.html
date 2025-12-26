@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>CM3065 Exercise 2</title>
+    <link rel="stylesheet" href="style.css" />
+
+    <!-- p5 -->
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.11.11/lib/p5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.11.11/lib/addons/p5.sound.min.js"></script>
+</head>
+
+<body>
+    <div id="app">
+        <div id="main" class="column loose">
+            <h1>Exercise 2 — Audio Captcha + Visualisation + Voice Control</h1>
+
+            <section class="card">
+                <div class="column">
+                    <h2>Mode</h2>
+                        <div class="row" id="modeRow">
+                        <button id="btnModeCaptcha">2.1 Captcha</button>
+                        <button id="btnModeVisual" class="secondary" disabled>2.2 Visualiser (soon)</button>
+                        <button id="btnModeVoice" class="secondary" disabled>2.3 Voice (soon)</button>
+                    </div>
+                    <div class="row small-text" id="appStatus">Status: UI loaded.</div>
+                </div>
+            </section>
+
+            <!-- 2.1 CAPTCHa PANEL -->
+            <section class="card" id="panelCaptcha">
+                <div class="column">
+                    <div class="row between">
+                        <div class="column tight">
+                            <h2>2.1 Audio Captcha</h2>
+                            <div class="small-text" id="captchaInfo">Play the audio captcha and submit your answer.</div>
+                        </div>
+
+                        <div class="row">
+                            <button id="btnCaptchaPlay" disabled>Play</button>
+                            <button id="btnCaptchaStop" disabled class="secondary">Stop</button>
+                            <button id="btnCaptchaNew">New captcha</button>
+                        </div>
+                    </div>
+
+                    <div class="effect column">
+                        <div class="row between">
+                            <div class="small-text"><b>[Visualise]</b> Audio visualisation based on the audio being played.</div>
+                            <div class="small-text mono" id="vizLabel">—</div>
+                        </div>
+                        <div id="captchaViz" class="vizBox"></div>
+                    </div>
+
+                    <div class="row">
+                        <div class="column" style="flex:1; min-width: 240px;">
+                            <label for="captchaInput">[Input Textbox] Type your answer</label>
+                            <input id="captchaInput" type="text" placeholder="e.g., 48291" />
+                        </div>
+
+                        <div class="column" style="min-width: 160px;">
+                            <label>&nbsp;</label>
+                            <button id="btnCaptchaSubmit">Submit</button>
+                        </div>
+
+                        <div class="column" style="min-width: 120px;">
+                            <label>&nbsp;</label>
+                            <button id="btnCaptchaClear" class="secondary">Clear</button>
+                        </div>
+                    </div>
+
+                    <div class="effect">
+                        <div id="captchaResult" class="small-text"><b>[Result]</b> Status message —</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2.2 AUDIO VISUALIZATION PANEL -->
+            <section class="card" id="panelVisual" style="display:none;">
+                <div class="column">
+                    <h2>2.2 Meyda Visualiser</h2>
+                    <div class="small-text">PLACEHOLDER</div>
+                </div>
+            </section>
+
+            <!-- 2.3 VOICE CONTROLLER PANEL -->
+            <section class="card" id="panelVoice" style="display:none;">
+                <div class="column">
+                    <h2>2.3 Voice Controller</h2>
+                    <div class="small-text">PLACEHOLDER</div>
+                </div>
+            </section>
+        </div>
+
+        <aside id="library">
+            <div class="column loose">
+                <h1>Exercise 2</h1>
+
+                <section class="card">
+                    <div class="column">
+                        <h2>Debug</h2>
+                        <div id="debugBox" class="small-text mono">—</div>
+                    </div>
+                </section>
+            </div>
+        </aside>
+    </div>
+
+    <script src="sketch.js"></script>
+</body>
+</html>
