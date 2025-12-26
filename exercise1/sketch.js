@@ -12,6 +12,7 @@ function setup() {
     buildEffectControlsUI();
     buildLibraryUI();
     renderLibraryList();
+    setupRecording();
     setEffectsToDefaults();
     setStatus('Status: UI loaded. Click "Load default sound" to begin.');
 }
@@ -113,6 +114,11 @@ function buildEffectControlsUI() {
     ui.btnRec.addClass('record');
     ui.btnRec.attribute('disabled', true);
     ui.btnRec.parent(select('#recControls'));
+
+    ui.btnRec.mousePressed(async () => {
+        await userStartAudio();
+        toggleRecording();
+    });
 }
 
 function buildLibraryUI() {
@@ -501,22 +507,7 @@ function ensureMasterNode() {
 }
 
 function loadDefaultSound() {
-    // Ensure gain node exists
-    ensureMasterNode();
-
-    setStatus('Status: Loading default sound (assets/demo.wav)...');
-
-    // Stop currend sound
-    unloadCurrentSound();
-
-    loadSound(
-        'assets/demo.wav',
-        (snd) => onSoundLoaded(snd, 'demo.wav'),
-        (err) => {
-            console.error(err);
-            setStatus('Status: Failed to load assets/demo.wav (check that file exists).');
-        }
-    );
+    loadSoundIntoPlayer('assets/demo.wav', 'demo.wav');
 }
 
 function onSoundLoaded(sound, label) {
@@ -527,7 +518,12 @@ function onSoundLoaded(sound, label) {
     connectSoundToEffectsChain(sound);
     // Apply default params
     applyAllEffectParamsFromUI();
+    
+    // Connect to spectrum visualisation busses
     connectSpectrumBusses();
+
+    // Setup recorder node
+    setupRecorderInput();
 
     // Update UI on ending
     currentSound.onended(
@@ -543,6 +539,7 @@ function onSoundLoaded(sound, label) {
     ui.btnPlay.removeAttribute('disabled');
     ui.btnStop.removeAttribute('disabled');
     ui.btnLoop.removeAttribute('disabled');
+    ui.btnRec.removeAttribute('disabled');
 
     // Update buttno text
     ui.btnPlay.html('Play');
@@ -875,4 +872,228 @@ function drawSpectrumBox(spec, x, y, w, h, title) {
     }
 
     pop();
+}
+
+// === STORAGE ===
+let assetWavs = [];
+let recordings = [];
+let recorder = null;
+let recordingFile = null;
+let isRecording = false;
+
+function setupRecording () {
+    recorder = new p5.SoundRecorder();
+    recordingFile = new p5.SoundFile();
+
+    loadAssetList();
+    renderStorageList(); 
+}
+
+function loadAssetList() {
+    // Try to load json list
+    fetch('assets/list.json')
+        .then(list => list.json())
+        .then(data => {
+            const samples = Array.isArray(data?.samples) ? data.samples : [];
+            // Clean up (only take wavs, and skip demo.wav)
+            assetWavs = samples
+                .filter(n => typeof n === 'string')
+                .filter(n => n.toLowerCase().endsWith('.wav'))
+                .filter(n => n.toLowerCase() !== 'demo.wav')
+                .map(name => ({ name, path: `assets/${name}` }));
+
+            debug_log('Loaded asset wavs:', assetWavs.map(x => x.name));
+            renderStorageList();
+        })
+        .catch(err => {
+            console.warn('No assets/list.json or failed to load it.', err);
+            assetWavs = [];
+            renderStorageList();
+        });
+}
+
+function loadSoundIntoPlayer(pathOrSoundFile, label) {
+    // String path -> loadSound
+    if (typeof pathOrSoundFile === 'string') {
+        ensureMasterNode();
+        setStatus(`Status: Loading "${label}"...`);
+        unloadCurrentSound();
+
+        loadSound(
+            pathOrSoundFile,
+            (snd) => onSoundLoaded(snd, label),
+            (err) => {
+                console.error(err);
+                setStatus(`Status: Failed to load "${label}".`);
+            }
+        );
+        return;
+    }
+
+    // Case 2: already a p5.SoundFile (recording)
+    if (pathOrSoundFile && typeof pathOrSoundFile.play === 'function') {
+        unloadCurrentSound();
+        onSoundLoaded(pathOrSoundFile, label);
+        return;
+    }
+}
+
+function setupRecorderInput() {
+    if (!recorder) return;
+    if (!busOut) return;
+    recorder.setInput(busOut);
+    debug_log('Recorder input set to busOut (post-master).');
+}
+
+function toggleRecording() {
+    if (!recorder) return;
+
+    // Start recording
+    if (!isRecording) {
+        recordingFile = new p5.SoundFile();
+        recorder.record(recordingFile);
+
+        isRecording = true;
+        ui.btnRec.html('Stop Rec');
+        setStatus('Status: Recording...');
+        return;
+    }
+
+    // Alreay recording - stop
+    recorder.stop();
+    isRecording = false;
+    ui.btnRec.html('Record');
+
+    const name = `rec_${new Date().toISOString().replace(/[:.]/g, '-')}`;
+    const item = {
+        id: crypto.randomUUID(),
+        name,
+        createdAt: new Date().toISOString(),
+        file: recordingFile
+    };
+    recordings.unshift(item);
+
+    renderStorageList();
+    setStatus(`Status: Recording saved in list (${name}). Use Download to persist.`);
+}
+
+function renderStorageList() {
+    const wrapper = select('#storageList');
+    if (!wrapper) return;
+
+    wrapper.html('');
+
+    // Assets section
+    const assetsHeader = createDiv('<b>Assets</b>');
+    assetsHeader.addClass('small-text');
+    wrapper.child(assetsHeader);
+
+    // Empty asset list
+    if (assetWavs.length === 0) {
+        const empty = createDiv('No asset WAVs found (add assets/manifest.json).');
+        empty.addClass('small-text');
+        wrapper.child(empty);
+    } else {
+        assetWavs.forEach(asset => {
+            const row = createDiv().addClass('item');
+
+            const left = createDiv(
+                `<div class='title'><b>${asset.name}</b></div>
+                <div class='small-text'>from assets/</div>`
+            );
+            left.addClass('column tight');
+
+            const actions = createDiv()
+            actions.addClass('actions');
+
+            const btnLoad = createButton('Load');
+            btnLoad.mousePressed(async () => {
+                await userStartAudio();
+                loadSoundIntoPlayer(asset.path, asset.name);
+            });
+
+            actions.child(btnLoad);
+
+            row.child(left);
+            row.child(actions);
+
+            wrapper.child(row);
+        });
+    }
+
+    // Recordings section
+    const recHeader = createDiv('<b>Recordings</b>');
+    recHeader.addClass('column tight small-text');
+    recHeader.style('margin-top', '10px');
+
+    wrapper.child(recHeader);
+
+    // Empty recordings liest
+    if (recordings.length === 0) {
+        const empty = createDiv('No recordings yet. Press Record while audio is playing.');
+        empty.addClass('small-text');
+        wrapper.child(empty);
+        return;
+    }
+
+    recordings.forEach(record => {
+        // Create dom structure for each record
+        const row = createDiv();
+        row.addClass('item');
+
+        const left = createDiv(
+        `<div class='title'><b>${record.name}</b></div>
+        <div class='small-text'>${new Date(record.createdAt).toLocaleString()}</div>`
+        );
+        left.addClass('column tight');
+
+        const actions = createDiv()
+        actions.addClass('actions');
+
+        const btnPlay = createButton('Play');
+        btnPlay.mousePressed(async () => {
+            await userStartAudio();
+            try { record.file.stop(); } catch {}
+            record.file.play();
+        });
+
+        const btnLoad = createButton('Load');
+        btnLoad.mousePressed(async () => {
+            await userStartAudio();
+            loadSoundIntoPlayer(record.file, record.name);
+        });
+
+        const btnRename = createButton('Rename');
+        btnRename.addClass('secondary');
+        btnRename.mousePressed(() => {
+            const newName = prompt('Recording name:', record.name);
+            if (!newName) return;
+            record.name = newName;
+            renderStorageList();
+        });
+
+        const btnDownload = createButton('Download');
+        btnDownload.addClass('secondary');
+        btnDownload.mousePressed(() => {
+            saveSound(record.file, `${record.name}.wav`);
+        });
+
+        const btnDelete = createButton('Delete');
+        btnDelete.addClass('secondary');
+        btnDelete.mousePressed(() => {
+            recordings = recordings.filter(rec => rec.id !== record.id);
+            renderStorageList();
+        });
+
+        actions.child(btnPlay);
+        actions.child(btnLoad);
+        actions.child(btnRename);
+        actions.child(btnDownload);
+        actions.child(btnDelete);
+
+        row.child(left);
+        row.child(actions);
+
+        wrapper.child(row);
+    });
 }
