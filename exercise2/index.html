@@ -21,7 +21,7 @@
                     <h2>Mode</h2>
                         <div class="row" id="modeRow">
                         <button id="btnModeCaptcha">2.1 Captcha</button>
-                        <button id="btnModeVisual" class="secondary" disabled>2.2 Visualiser (soon)</button>
+                        <button id="btnModeVisual" class="secondary">2.2 Visualiser</button>
                         <button id="btnModeVoice" class="secondary" disabled>2.3 Voice (soon)</button>
                     </div>
                     <div class="row small-text" id="appStatus">Status: UI loaded.</div>
@@ -78,8 +78,43 @@
             <!-- 2.2 AUDIO VISUALIZATION PANEL -->
             <section class="card" id="panelVisual" style="display:none;">
                 <div class="column">
-                    <h2>2.2 Meyda Visualiser</h2>
-                    <div class="small-text">PLACEHOLDER</div>
+                    <div class="row between">
+                        <div class="column tight">
+                            <h2>2.2 Meyda Visualiser</h2>
+                            <div class="small-text">Select a WAV, press Play, and observe feature-driven visuals (Meyda).</div>
+                        </div>
+
+                        <div class="row">
+                            <button id="btnVisPlay" disabled>Play</button>
+                            <button id="btnVisStop" class="secondary" disabled>Stop</button>
+                        </div>
+                    </div>
+
+                    <div class="effect column">
+                        <div class="row between">
+                            <div class="small-text"><b>[Visualise]</b> Feature-driven visualisation (Task 2.2).</div>
+                            <div class="small-text mono" id="visLabel">—</div>
+                        </div>
+                        <div id="visualViz" class="vizBox"></div>
+                    </div>
+
+                    <div class="grid">
+                        <div class="effect column">
+                            <h3>Sound selection</h3>
+                            <div class="row">
+                                <button id="btnSound1">Sound 1</button>
+                                <button id="btnSound2" class="secondary">Sound 2</button>
+                                <button id="btnSound3" class="secondary">Sound 3</button>
+                            </div>
+                            <div class="small-text mono" id="soundPathLabel">assets/visualize/Ex2_sound1.wav</div>
+                        </div>
+
+                        <div class="effect column">
+                            <h3>Feature monitor</h3>
+                            <div class="small-text">PLACEHOLDER</div>
+                            <div class="small-text mono" id="featureReadout">—</div>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -106,6 +141,7 @@
         </aside>
     </div>
 
+    <script type="text/javascript" src="https://unpkg.com/meyda@5.6.3/dist/web/meyda.min.js"></script>
     <script src="sketch.js"></script>
 </body>
 </html>

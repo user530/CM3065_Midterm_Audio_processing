@@ -40,6 +40,7 @@ function setup() {
     
     wireModeButtons();
     wireCaptchaUI();
+    wireVisualUI();
     
     // Build audio FX chain
     buildCaptchaEffectsChain();
@@ -64,7 +65,6 @@ function draw() {
 // === UI ===
 function wireModeButtons() {
     ui.btnModeCaptcha = select('#btnModeCaptcha');
-
     ui.btnModeVisual = select('#btnModeVisual');
     ui.btnModeVoice = select('#btnModeVoice');
 
@@ -73,6 +73,7 @@ function wireModeButtons() {
     ui.panelVoice = select('#panelVoice');
 
     ui.btnModeCaptcha.mousePressed(() => setMode('captcha'));
+    ui.btnModeVisual.mousePressed(() => setMode('visual'));
 }
 
 function setMode(next) {
@@ -196,6 +197,44 @@ function wireCaptchaUI() {
         ui.captchaResult.html('<b>[Result]</b> Status message —');
 
         setStatus('Status: Cleared input.');
+    });
+}
+
+function wireVisualUI() {
+    // Selectors
+    ui.btnVisPlay = select('#btnVisPlay');
+    ui.btnVisStop = select('#btnVisStop');
+
+    ui.btnSound1 = select('#btnSound1');
+    ui.btnSound2 = select('#btnSound2');
+    ui.btnSound3 = select('#btnSound3');
+
+    ui.visLabel = select('#visLabel');
+    ui.soundPathLabel = select('#soundPathLabel');
+    ui.featureReadout = select('#featureReadout');
+
+    // Btn handlers
+    ui.btnSound1.mousePressed(() => {
+        ui.soundPathLabel.html('assets/visualize/Ex2_sound1.wav');
+        setStatus('Status: Selected Sound 1.');
+    });
+
+    ui.btnSound2.mousePressed(() => {
+        ui.soundPathLabel.html('assets/visualize/Ex2_sound2.wav');
+        setStatus('Status: Selected Sound 2.');
+    });
+
+    ui.btnSound3.mousePressed(() => {
+        ui.soundPathLabel.html('assets/visualize/Ex2_sound3.wav');
+        setStatus('Status: Selected Sound 3.');
+    });
+
+    ui.btnVisPlay.mousePressed(() => {
+        setStatus('Status: Play visualiser.');
+    });
+
+    ui.btnVisStop.mousePressed(() => {
+        setStatus('Status: Stop visualiser.');
     });
 }
 
