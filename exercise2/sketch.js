@@ -210,10 +210,21 @@ function setDebug(text) {
 }
 
 function setupVizualizer() {
-    viz.canvas = createCanvas(700, 110);
+    const parentEl = document.getElementById('captchaViz');
+
+    // Create a temporary canvas; resize after layout stabilizes
+    viz.canvas = createCanvas(10, 10);
     viz.canvas.parent('captchaViz');
 
     viz.fft = new p5.FFT(0.85, 1024);
+
+    // Wait for layout to settle (often needs 2 frames)
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            const rect = parentEl.getBoundingClientRect();
+            resizeCanvas(Math.floor(rect.width), Math.floor(rect.height));
+        });
+    });
 }
 
 function renderWaveform() {
@@ -231,11 +242,13 @@ function renderWaveform() {
     stroke(20);
     strokeWeight(2);
     beginShape();
+    const multiplier = 5;
 
     // Draw waveform
     for (let i = 0; i < wave.length; i++) {
         const x = map(i, 0, wave.length - 1, 0, width);
-        const y = map(wave[i], -1, 1, height - 10, 10);
+        const amplified = constrain(wave[i] * multiplier, -1, 1);
+        const y = map(amplified, -1, 1, height - 10, 10);
         vertex(x, y);
     }
 
@@ -255,6 +268,12 @@ function drawCenteredText(msg) {
     textSize(12);
     textAlign(CENTER, CENTER);
     text(msg, width / 2, height / 2);
+}
+
+function windowResized() {
+    const parentEl = document.getElementById('captchaViz');
+    const rect = parentEl.getBoundingClientRect();
+    resizeCanvas(Math.floor(rect.width), Math.floor(rect.height));
 }
 
 // === CAPTCHA GENERATION ===
@@ -462,7 +481,7 @@ function randomiseCaptchaScrambleParams() {
     // Re-wire correct filter based on random
     if (useHP) {
         passLabel = 'HP';
-        passFreq = random(500, 1200);
+        passFreq = random(600, 1200);
 
         captchaEffects.bp.connect(captchaEffects.hp);
         captchaEffects.hp.connect(captchaEffects.dist);
