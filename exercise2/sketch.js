@@ -24,6 +24,19 @@ let visualiserState = {
     },
 }
 
+// Task 2.3
+let voiceState = {
+  sound: null,
+  isPlaying: false,
+
+  bg: 'black',
+  shape: 'square',
+
+  speechRec: null,
+  isListening: false,
+  lastHeard: '—',
+  lastAction: '—',
+};
 
 // Captcha variables
 let captchaToken = '';
@@ -61,6 +74,9 @@ function preload() {
     visualiserState.sounds.sound1 = loadSound('assets/visualize/Ex2_sound1.wav');
     visualiserState.sounds.sound2 = loadSound('assets/visualize/Ex2_sound2.wav');
     visualiserState.sounds.sound3 = loadSound('assets/visualize/Ex2_sound3.wav');
+
+    // TASK 2.3
+    voiceState.sound = loadSound('assets/voice/Kalte_Ohren_(_Remix_).mp3');
 }
 
 function setup() {
@@ -86,7 +102,7 @@ function setup() {
 }
 
 function draw() {
-    background(255);
+    background(245);
 
     if(mode === 'captcha') {
         renderWaveform();
@@ -95,6 +111,11 @@ function draw() {
 
     if(mode === 'visual') {
         renderMeydaVisualiser();
+        return;
+    }
+
+    if (mode === 'voice') {
+        renderVoiceVisualiser();
         return;
     }
 }
@@ -311,6 +332,14 @@ function wireVoiceUI() {
     ui.voiceLabel.html('Ready');
     ui.voiceHeard.html('Heard: —');
     ui.voiceAction.html('Action: —');
+
+    // Btn handlers
+    ui.btnVoiceStart.mousePressed(async () => {
+        await userStartAudio();
+        await startVoiceMode();
+    });
+
+    ui.btnVoiceStop.mousePressed(() => stopVoiceMode());
 }
 
 function setStatus(text) {
@@ -897,3 +926,211 @@ function renderMeydaVisualiser() {
 }
 
 // VOICE CONTROLELR
+async function startVoiceMode() {
+    // Init speech recognition
+    if (!voiceState.speechRec) {
+        voiceState.speechRec = new p5.SpeechRec('en-US', onSpeechResult);
+        voiceState.speechRec.continuous = true;
+        voiceState.speechRec.interimResults = false;
+
+        // Debug logs
+        voiceState.speechRec.onStart = () => console.log('SpeechRec started');
+        voiceState.speechRec.onEnd = () => console.log('SpeechRec stopped');
+        voiceState.speechRec.onError = (e) => console.error('SpeechRec error', e);
+    }
+
+    // Mic permissions
+    try {
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (e) {
+        const msg = 'Mic permission failed';
+
+        console.error(msg, e);
+
+        // UI update
+        setDebug(msg);
+        voiceState.lastAction = 'Mic permission denied/blocked';
+        ui.voiceAction.html(`Action: ${voiceState.lastAction}`);
+        return;
+    }
+
+    // Start speech recognition
+    try {
+        voiceState.speechRec.start();
+        voiceState.isListening = true;
+    } catch (e) {
+        console.error(e);
+    }
+
+    // Update UI
+    voiceState.lastAction = 'Listening...';
+    ui.voiceLabel.html('Listening');
+    ui.voiceAction.html(`Action: ${voiceState.lastAction}`);
+
+    // Autoplay on load
+    if (voiceState.sound && voiceState.sound.isLoaded() && !voiceState.sound.isPlaying()) {
+        voiceState.sound.loop();
+        voiceState.isPlaying = true;
+    }
+}
+
+function stopVoiceMode() {
+    // Stop recognition
+    if (voiceState.speechRec && voiceState.isListening) {
+        try { voiceState.speechRec.stop(); } catch (e) {}
+    }
+    voiceState.isListening = false;
+
+    // Stop playback
+    if (voiceState.sound && voiceState.sound.isPlaying()) {
+        voiceState.sound.stop();
+    }
+    voiceState.isPlaying = false;
+
+    // Update UI
+    voiceState.lastAction = 'Stopped';
+    ui.voiceLabel.html('Ready');
+    ui.voiceAction.html(`Action: ${voiceState.lastAction}`);
+}
+
+function onSpeechResult() {
+    // Recognition string
+    const raw = (voiceState.speechRec.resultString || '').trim();
+    if (!raw) return;
+
+    // Register heard string
+    voiceState.lastHeard = raw;
+    ui.voiceHeard.html(`Heard: ${raw}`);
+
+    // 2 Lists of existing options
+    const colors = ['black', 'white', 'red', 'blue', 'green'];
+    const shapes = ['square', 'triangle', 'circle', 'pentagon'];
+
+    // Prepare normalized str and action falg
+    const said = raw.toLowerCase();
+    let didSomething = false;
+
+    // Check if color command was recognized
+    for (const color of colors) {
+        if (said.includes(color)) {
+            voiceState.bg = color;
+            voiceState.lastAction = `Background -> ${color}`;
+            didSomething = true;
+            break;
+        }
+    }
+
+    // Check if shape command was recognized
+    for (const shape of shapes) {
+        if (said.includes(shape)) {
+            voiceState.shape = shape;
+            voiceState.lastAction = `Shape -> ${shape}`;
+            didSomething = true;
+            break;
+        }
+    }
+
+    // Log unrecognized string
+    if (!didSomething) {
+        voiceState.lastAction = 'No command matched';
+    }
+
+    // UpdateUI
+    ui.voiceAction.html(`Action: ${voiceState.lastAction}`);
+}
+
+function renderVoiceVisualiser() {
+    // Guard clasue
+    if (!voiceState.isPlaying && !voiceState.isListening) {
+        background(245);
+        drawCenteredText('Idle - click Start Listening');
+        return;
+    }
+
+    // Background/foreground map based on the state
+    const bgMap = {
+        black: { bg: [0, 0, 0], fg: [240, 240, 240] },
+        white: { bg: [255, 255, 255], fg: [20, 20, 20] },
+        red:   { bg: [220, 40, 40], fg: [255, 235, 235] },
+        blue:  { bg: [40, 90, 220], fg: [235, 240, 255] },
+        green: { bg: [40, 180, 90], fg: [235, 255, 240] },
+    };
+
+    // Select color scheme
+    const scheme = bgMap[voiceState.bg] || bgMap.black;
+
+    // Background
+    background(scheme.bg[0], scheme.bg[1], scheme.bg[2]);
+
+    // Shape colours
+    stroke(scheme.fg[0], scheme.fg[1], scheme.fg[2]);
+    fill(scheme.fg[0], scheme.fg[1], scheme.fg[2], 160);
+    strokeWeight(2);
+
+    // PLACEHOLDER, later use audio energy to animate 
+    let energy = 0.2;
+    if (getAudioContext().state === 'running' && voiceState.sound && voiceState.sound.isPlaying()) {
+        energy = 0.6;
+    }
+
+    // Simple darw setup: fixed amount of shapes with small x offset, in the middle of steh screen
+    const count = 12;
+    const margin = 10;
+    const y = height / 2;
+
+    // Draw these shapes
+    for (let i = 0; i < count; i++) {
+        // Simple interpolation
+        const interplt = i / (count - 1);
+        // Center X coordinate (y is same for all)
+        const x = lerp(margin, width - margin, interplt);
+
+        // Simple rotation and size setup
+        const rot = sin(frameCount * 0.03 + i) * 0.6;
+        const size = lerp(height * 0.15, height * 0.75, 0.5 + 0.5 * sin(frameCount * 0.05 + i));
+
+        push();
+        // Rotate and fraw
+        translate(x, y);
+        rotate(rot);
+
+        drawShape(voiceState.shape, size);
+        pop();
+    }
+
+    // UI update
+    fill(255);
+    noStroke();
+    textSize(12);
+    textAlign(LEFT, BOTTOM);
+    text(`bg=${voiceState.bg}, shape=${voiceState.shape}`, 10, height - 8);
+}
+
+function drawShape(shape, size) {
+    if (shape === 'square') {
+        rectMode(CENTER);
+        rect(0, 0, size, size);
+        return;
+    }
+
+    if (shape === 'circle') {
+        ellipse(0, 0, size, size);
+        return;
+    }
+
+    // Number of sides, based on command
+    const sides = (shape === 'triangle') ? 3 : (shape === 'pentagon') ? 5 : 4;
+
+    // Draw shape using vertexrs
+    beginShape();
+    const r = size / 2;
+
+    for (let i = 0; i < sides; i++) {
+        // Find angle between vertices
+        const a = -HALF_PI + i * TWO_PI / sides;
+        // Draw vertex using cartesian converseion
+        vertex(cos(a) * r, sin(a) * r);
+    }
+
+    endShape(CLOSE);
+}
