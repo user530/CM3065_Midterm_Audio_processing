@@ -3,6 +3,28 @@ let mode = 'captcha';
 let captchaIsPlaying = false;
 let viz = { canvas: null, fft: null };
 
+// Task 2.2
+let visualiserState = {
+    sounds: {},
+    selectedSoundKey: 'sound1',
+    isPlaying: false,
+
+    // p5Audio nodes for Meyda
+    sourceNode: null,
+    gainNode: null,
+    analyzer: null,
+
+    // Meyda features
+    features: {
+        rms: 0,
+        zcr: 0,
+        spectralCentroid: 0,
+        spectralFlatness: 0,
+        spectralRolloff: 0,
+    },
+}
+
+
 // Captcha variables
 let captchaToken = '';
 let captchaReady = false;
@@ -21,6 +43,7 @@ let digitSounds = {};
 let assetsLoaded = false;
 
 function preload() {
+    // TASK 2.1
     // Base path
     const base = 'assets/digits/';
     
@@ -33,6 +56,11 @@ function preload() {
             () => {}
         );
     }
+
+    // TASK 2.2
+    visualiserState.sounds.sound1 = loadSound('assets/visualize/Ex2_sound1.wav');
+    visualiserState.sounds.sound2 = loadSound('assets/visualize/Ex2_sound2.wav');
+    visualiserState.sounds.sound3 = loadSound('assets/visualize/Ex2_sound3.wav');
 }
 
 function setup() {
@@ -42,6 +70,7 @@ function setup() {
     wireCaptchaUI();
     wireVisualUI();
     
+    // TASK 2.1
     // Build audio FX chain
     buildCaptchaEffectsChain();
     
@@ -58,8 +87,15 @@ function setup() {
 function draw() {
     background(255);
 
-    if(mode !== 'captcha') return;
-    renderWaveform();
+    if(mode === 'captcha') {
+        renderWaveform();
+        return;
+    }
+
+    if(mode === 'visual') {
+        renderMeydaVisualiser();
+        return;
+    }
 }
 
 // === UI ===
@@ -83,6 +119,19 @@ function setMode(next) {
     ui.panelCaptcha.style('display', mode === 'captcha' ? 'block' : 'none');
     ui.panelVisual.style('display', mode === 'visual' ? 'block' : 'none');
     ui.panelVoice.style('display', mode === 'voice' ? 'block' : 'none');
+
+    // Transfer canvas to the active panel
+    const targetParentId = (mode === 'captcha') ? 'captchaViz' : 'visualViz';
+    attachCanvasTo(targetParentId);
+
+    // Stop other panel
+    if (mode === 'visual') {
+        stopCaptchaPlayback();
+    }
+
+    if (mode === 'captcha') {
+        stopVisualiser();
+    }
 }
 
 function wireCaptchaUI() {
@@ -213,29 +262,28 @@ function wireVisualUI() {
     ui.soundPathLabel = select('#soundPathLabel');
     ui.featureReadout = select('#featureReadout');
 
+    // Enable buttons, they should be loaded in the preload fase
+    ui.btnVisPlay.removeAttribute('disabled');
+    ui.btnVisStop.removeAttribute('disabled');
+
     // Btn handlers
-    ui.btnSound1.mousePressed(() => {
-        ui.soundPathLabel.html('assets/visualize/Ex2_sound1.wav');
-        setStatus('Status: Selected Sound 1.');
+    ui.btnSound1.mousePressed(() => selectVisualSound('sound1'));
+    ui.btnSound2.mousePressed(() => selectVisualSound('sound2'));
+    ui.btnSound3.mousePressed(() => selectVisualSound('sound3'));
+
+    ui.btnVisPlay.mousePressed(async () => {
+        await userStartAudio();
+        playVisualiser();
     });
 
-    ui.btnSound2.mousePressed(() => {
-        ui.soundPathLabel.html('assets/visualize/Ex2_sound2.wav');
-        setStatus('Status: Selected Sound 2.');
+    ui.btnVisStop.mousePressed(async () => {
+        stopVisualiser();
     });
 
-    ui.btnSound3.mousePressed(() => {
-        ui.soundPathLabel.html('assets/visualize/Ex2_sound3.wav');
-        setStatus('Status: Selected Sound 3.');
-    });
-
-    ui.btnVisPlay.mousePressed(() => {
-        setStatus('Status: Play visualiser.');
-    });
-
-    ui.btnVisStop.mousePressed(() => {
-        setStatus('Status: Stop visualiser.');
-    });
+    // Update UI
+    updateVisualSoundLabel();
+    ui.visLabel.html('Ready');
+    ui.featureReadout.html('—');
 }
 
 function setStatus(text) {
@@ -310,9 +358,42 @@ function drawCenteredText(msg) {
 }
 
 function windowResized() {
-    const parentEl = document.getElementById('captchaViz');
+    const parentId = (mode === 'captcha') ? 'captchaViz' : 'visualViz';
+    const parentEl = document.getElementById(parentId);
     const rect = parentEl.getBoundingClientRect();
     resizeCanvas(Math.floor(rect.width), Math.floor(rect.height));
+}
+
+function attachCanvasTo(parentId) {
+    // Attach canva to the new container
+    viz.canvas.parent(parentId);
+
+    // Resize it appropriatley
+    const parentEl = document.getElementById(parentId);
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            const rect = parentEl.getBoundingClientRect();
+            resizeCanvas(Math.floor(rect.width), Math.floor(rect.height));
+        });
+    });
+}
+
+function selectVisualSound(key) {
+    if (visualiserState.isPlaying) stopVisualiser();
+    visualiserState.selectedSoundKey = key;
+    updateVisualSoundLabel();
+    setStatus(`Status: Selected ${key.toUpperCase()}.`);
+    ui.featureReadout.html('—');
+}
+
+function updateVisualSoundLabel() {
+  const map = {
+    sound1: 'assets/visualize/Ex2_sound1.wav',
+    sound2: 'assets/visualize/Ex2_sound2.wav',
+    sound3: 'assets/visualize/Ex2_sound3.wav',
+  };
+
+  if (ui.soundPathLabel) ui.soundPathLabel.html(map[visualiserState.selectedSoundKey]);
 }
 
 // === CAPTCHA GENERATION ===
@@ -550,4 +631,235 @@ function randomiseCaptchaScrambleParams() {
         `${passLabel}=${passFreq.toFixed(0)}Hz, ` +
         `dist=${distortion.toFixed(2)}, noise=${noiseLevel.toFixed(3)}`
     );
+}
+
+// TASK 2.2
+function playVisualiser() {
+    // Guard clause to ensure Meyda exists
+    if (!window.Meyda) {
+        setDebug('Error: Meyda not loaded! Ensure library loaded.');
+        setStatus('Status: Meyda missing.');
+        return;
+    }
+
+    const soundFile = visualiserState.sounds[visualiserState.selectedSoundKey];
+
+    // Guard clause
+    if (!soundFile || !soundFile.isLoaded || !soundFile.isLoaded()) {
+        setStatus('Status: Sound not loaded yet.');
+        setDebug('Warning: Selected sound not loaded');
+        return;
+    }
+
+    // Clear previous visualiser
+    stopVisualiser();
+
+    const audioContext = getAudioContext();
+    const buffer = soundFile.buffer;
+
+    // Setup sound nodes
+    visualiserState.sourceNode = audioContext.createBufferSource();
+    visualiserState.sourceNode.buffer = buffer;
+
+    visualiserState.gainNode = audioContext.createGain();
+    visualiserState.gainNode.gain.value = 1.0;
+
+    // Connect nodes to output
+    visualiserState.sourceNode.connect(visualiserState.gainNode);
+    visualiserState.gainNode.connect(audioContext.destination);
+
+    // Create Meyda analyzer
+    visualiserState.analyzer = Meyda.createMeydaAnalyzer({
+        audioContext: audioContext,
+        source: visualiserState.gainNode,
+        bufferSize: 512,
+        featureExtractors: [
+            'rms',
+            'zcr',
+            'spectralCentroid',
+            'spectralFlatness',
+            'spectralRolloff',
+        ],
+        // Store meyda results and update UI
+        callback: (features) => {
+            if (!features) return;
+
+            // Meyda features to global statte
+            if (typeof features.rms === 'number') visualiserState.features.rms = features.rms;
+            if (typeof features.zcr === 'number') visualiserState.features.zcr = features.zcr;
+            if (typeof features.spectralCentroid === 'number') visualiserState.features.spectralCentroid = features.spectralCentroid;
+            if (typeof features.spectralFlatness === 'number') visualiserState.features.spectralFlatness = features.spectralFlatness;
+            if (typeof features.spectralRolloff === 'number') visualiserState.features.spectralRolloff = features.spectralRolloff;
+
+            // Update UI
+            if (ui.featureReadout) {
+                ui.featureReadout.html(
+                    `rms=${visualiserState.features.rms.toFixed(4)}\n` +
+                    `zcr=${visualiserState.features.zcr.toFixed(1)}\n` +
+                    `centroid=${visualiserState.features.spectralCentroid.toFixed(0)}\n` +
+                    `flatness=${visualiserState.features.spectralFlatness.toFixed(3)}\n` +
+                    `rolloff=${visualiserState.features.spectralRolloff.toFixed(0)}\n`
+                );
+            }
+        }
+    });
+
+    // Start visualiser
+    visualiserState.analyzer.start();
+    visualiserState.sourceNode.start();
+    // Raise flag
+    visualiserState.isPlaying = true;
+
+    // Update UI
+    ui.visLabel.html('Playing');
+    setStatus('Status: Playing visualiser sound.');
+    // Handle playback end
+    visualiserState.sourceNode.onended = () => {
+        stopVisualiser();
+        ui.visLabel.html('Idle');
+        setStatus('Status: Visualiser playback ended.');
+    };
+}
+
+function stopVisualiser() {
+    // Lower flag
+    visualiserState.isPlaying = false;
+
+    // Stop and clear analyzer
+    if (visualiserState.analyzer) {
+        try { visualiserState.analyzer.stop(); } catch (e) {}
+        visualiserState.analyzer = null;
+    }
+
+    // Stop and clear playback
+    if (visualiserState.sourceNode) {
+        try { visualiserState.sourceNode.stop(); } catch (e) {}
+        try { visualiserState.sourceNode.disconnect(); } catch (e) {}
+        visualiserState.sourceNode = null;
+    }
+
+    // Mute and clear gain node
+    if (visualiserState.gainNode) {
+        try { visualiserState.gainNode.disconnect(); } catch (e) {}
+        visualiserState.gainNode = null;
+    }
+
+    // Reset state features
+    for (const feature of Object.keys(visualiserState.features)) visualiserState.features[feature] = 0;
+}
+
+function renderMeydaVisualiser() {
+    // No visualisation when not playing
+    if (!visualiserState.isPlaying) {
+        background(245);
+        drawCenteredText('Idle - click Play');
+        return;
+    }
+
+    // Read Meyda feature values
+    const rms = visualiserState.features.rms;
+    const centroid = visualiserState.features.spectralCentroid;
+    const rolloff = visualiserState.features.spectralRolloff;
+    const flatness = visualiserState.features.spectralFlatness;
+    const zcr = visualiserState.features.zcr;
+
+    /*
+        Meyda features visual mapping:
+        - rms -> alpha + value + pulse magnitude (energy -> brighter + stronger size)
+        - zcr -> stroke weight (noisy/high-freq -> thicker outlines)
+        - spectralRolloff -> background hue value and shift (higher freq => deeper background + hue drift)
+        - spectralFlatness -> vertical jitter + rotation speed (more noisy sound -> unstable motion)
+        - spectralCentroid -> primary hue shift ("brighter" sound -> vibrant colors)
+    */
+
+    // Normalised values
+    const normEnergy = constrain(map(rms, 0, 0.12, 0, 1), 0, 1);
+    const normBright = constrain(map(centroid, 200, 6000, 0, 1), 0, 1);
+    const normRolloff = constrain(map(rolloff, 500, 14000, 0, 1), 0, 1);
+    const normNoise = constrain(flatness, 0, 1);
+    const normZcr = constrain(map(zcr, 0, 140, 0, 1), 0, 1);
+
+    // Use HSB for powerfull color changes
+    colorMode(HSB, 360, 100, 100, 255);
+
+    // Background params
+    const bgHue = (200 + normRolloff * 140 + frameCount * 0.15) % 360;
+    const bgSat = 25 + normNoise * 35;
+    const bgVal = 95 - normRolloff * 20 - normNoise * 15;
+    background(bgHue, bgSat, bgVal);
+
+    // Number of squares
+    const shapeCount = floor(lerp(6, 20, normEnergy));
+
+    // Base size - centroid dependent
+    const baseSize = lerp(height * 0.25, height * 0.9, normBright);
+
+    // Vertical jitter
+    const jitter = lerp(10, 100, normNoise);
+
+    // Stroke weight - zcr dependant
+    const strokeW = lerp(1, 10, normZcr);
+    strokeWeight(strokeW);
+
+    // Color intensity - energy dependant
+    const alpha = lerp(70, 230, normEnergy);
+    // Brightness
+    const colValue = lerp(25, 225, normEnergy);
+
+    // Rotation, driven by noise + brightness
+    const rotSpeed = 0.5 + normNoise * 0.15 + normBright * 0.05;
+
+    // Pulse is boosted by energy
+    const pulseAmt = lerp(0.25, 0.5, normEnergy);
+
+    rectMode(CENTER);
+
+    push();
+    translate(width / 2, height / 2);
+
+    // Small horizontal border offset
+    const margin = 15;
+    for (let i = 0; i < shapeCount; i++) {
+        // Interpolation (spread squares around )
+        const interplt = (shapeCount <= 1) ? 0.5 : i / (shapeCount - 1);
+
+        // Coordinates (with jitter around y-axis)
+        const x = lerp(-width / 2 + margin, width / 2 - margin, interplt);
+        const y = random(-jitter, jitter);
+
+        // Rotation
+        const phase = i * 2 + interplt * 5;
+        const rot = sin(frameCount * rotSpeed + phase);
+
+        // Pulsing
+        const pulse = 1.0 + sin(frameCount * 0.15 + i * 0.8) * pulseAmt;
+
+        // Hue and saturation
+        const hue = (normBright * 320 + interplt * 90 + frameCount * 0.35) % 360;
+        const saturtn = 35 + normNoise * 60;
+
+        // Set colors
+        stroke((hue + 180) % 360, 80, 95, 230);
+        fill(hue, saturtn, colValue, alpha);
+
+        // Rectside
+        const side = baseSize * pulse;
+
+        push();
+        translate(x, y);
+        rotate(rot);
+        rect(0, 0, side, side);
+        pop();
+    }
+
+    pop();
+
+    // Reset color mode for UI text
+    colorMode(RGB, 255);
+    noStroke();
+    // UI text
+    fill(90);
+    textSize(12);
+    textAlign(LEFT, BOTTOM);
+    text('Playing (Meyda)', 10, height - 8);
 }
