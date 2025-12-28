@@ -27,6 +27,8 @@ let visualiserState = {
 // Task 2.3
 let voiceState = {
   sound: null,
+  soundEnergySmoothed: 0,
+  amp: null,
   isPlaying: false,
 
   bg: 'black',
@@ -136,6 +138,11 @@ function wireModeButtons() {
 }
 
 function setMode(next) {
+    // Stop systms from previous modes
+    stopCaptchaPlayback();
+    stopVisualiser();
+    stopVoiceMode();
+
     mode = next;
     
     // Show exercise panel based on mode
@@ -149,23 +156,8 @@ function setMode(next) {
     : (mode === 'visual')  
         ? 'visualViz'  
         : 'voiceViz';
+
     attachCanvasTo(targetParentId);
-
-    // Stop other panel
-    if (mode === 'visual') {
-        stopCaptchaPlayback();
-        // Stop voice controls
-    }
-
-    if (mode === 'captcha') {
-        stopVisualiser();
-        // Stop voice controls
-    }
-
-    if (mode === 'voice') {
-        stopCaptchaPlayback();
-        stopVisualiser();
-    }
 }
 
 function wireCaptchaUI() {
@@ -939,6 +931,13 @@ async function startVoiceMode() {
         voiceState.speechRec.onError = (e) => console.error('SpeechRec error', e);
     }
 
+    // Init voice amplitude
+    if(!voiceState.amp) {
+        voiceState.amp = new p5.Amplitude();
+        voiceState.amp.setInput(voiceState.sound);
+    }
+
+
     // Mic permissions
     try {
         await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -991,6 +990,7 @@ function stopVoiceMode() {
     voiceState.lastAction = 'Stopped';
     ui.voiceLabel.html('Ready');
     ui.voiceAction.html(`Action: ${voiceState.lastAction}`);
+    ui.voiceHeard.html('Heard: —');
 }
 
 function onSpeechResult() {
@@ -1042,7 +1042,7 @@ function onSpeechResult() {
 function renderVoiceVisualiser() {
     // Guard clasue
     if (!voiceState.isPlaying && !voiceState.isListening) {
-        background(245);
+        background(voiceState.bg === 'white' ? 45 : 245);
         drawCenteredText('Idle - click Start Listening');
         return;
     }
@@ -1067,11 +1067,16 @@ function renderVoiceVisualiser() {
     fill(scheme.fg[0], scheme.fg[1], scheme.fg[2], 160);
     strokeWeight(2);
 
-    // PLACEHOLDER, later use audio energy to animate 
-    let energy = 0.2;
-    if (getAudioContext().state === 'running' && voiceState.sound && voiceState.sound.isPlaying()) {
-        energy = 0.6;
+    // Get energy from the sound amplitude
+    let level = 0;
+    if(voiceState.amp && voiceState.sound && voiceState.sound.isPlaying()){
+        level = voiceState.amp.getLevel();
     }
+
+    // Normalize and smooth sound energy
+    const norm = constrain(map(level, 0, 0.25, 0, 1), 0, 1);
+    voiceState.soundEnergySmoothed = lerp(voiceState.soundEnergySmoothed, norm, 0.15);
+    const energy = voiceState.soundEnergySmoothed;
 
     // Simple darw setup: fixed amount of shapes with small x offset, in the middle of steh screen
     const count = 12;
@@ -1086,13 +1091,13 @@ function renderVoiceVisualiser() {
         const x = lerp(margin, width - margin, interplt);
 
         // Simple rotation and size setup
-        const rot = sin(frameCount * 0.03 + i) * 0.6;
-        const size = lerp(height * 0.15, height * 0.75, 0.5 + 0.5 * sin(frameCount * 0.05 + i));
+        const rotation = sin(frameCount * (0.02 + energy * 0.10) + i) * (0.2 + energy * 1.0);
+        const size = lerp(height * 0.12, height * 0.80, 0.25 + energy * 0.65 + 0.10 * sin(frameCount * 0.05 + i));
 
         push();
         // Rotate and fraw
         translate(x, y);
-        rotate(rot);
+        rotate(rotation);
 
         drawShape(voiceState.shape, size);
         pop();
