@@ -69,6 +69,7 @@ function setup() {
     wireModeButtons();
     wireCaptchaUI();
     wireVisualUI();
+    wireVoiceUI();
     
     // TASK 2.1
     // Build audio FX chain
@@ -110,6 +111,7 @@ function wireModeButtons() {
 
     ui.btnModeCaptcha.mousePressed(() => setMode('captcha'));
     ui.btnModeVisual.mousePressed(() => setMode('visual'));
+    ui.btnModeVoice.mousePressed(() => setMode('voice'));
 }
 
 function setMode(next) {
@@ -121,15 +123,26 @@ function setMode(next) {
     ui.panelVoice.style('display', mode === 'voice' ? 'block' : 'none');
 
     // Transfer canvas to the active panel
-    const targetParentId = (mode === 'captcha') ? 'captchaViz' : 'visualViz';
+    const targetParentId = (mode === 'captcha') 
+    ? 'captchaViz' 
+    : (mode === 'visual')  
+        ? 'visualViz'  
+        : 'voiceViz';
     attachCanvasTo(targetParentId);
 
     // Stop other panel
     if (mode === 'visual') {
         stopCaptchaPlayback();
+        // Stop voice controls
     }
 
     if (mode === 'captcha') {
+        stopVisualiser();
+        // Stop voice controls
+    }
+
+    if (mode === 'voice') {
+        stopCaptchaPlayback();
         stopVisualiser();
     }
 }
@@ -286,6 +299,20 @@ function wireVisualUI() {
     ui.featureReadout.html('—');
 }
 
+function wireVoiceUI() {
+    ui.btnVoiceStart = select('#btnVoiceStart');
+    ui.btnVoiceStop = select('#btnVoiceStop');
+
+    ui.voiceLabel = select('#voiceLabel');
+    ui.voiceHeard = select('#voiceHeard');
+    ui.voiceAction = select('#voiceAction');
+    ui.voiceTrackLabel = select('#voiceTrackLabel');
+
+    ui.voiceLabel.html('Ready');
+    ui.voiceHeard.html('Heard: —');
+    ui.voiceAction.html('Action: —');
+}
+
 function setStatus(text) {
     const status = select('#appStatus')
     status.html(text);
@@ -358,7 +385,12 @@ function drawCenteredText(msg) {
 }
 
 function windowResized() {
-    const parentId = (mode === 'captcha') ? 'captchaViz' : 'visualViz';
+    const parentId = (mode === 'captcha') 
+    ? 'captchaViz' 
+    : (mode === 'visual')  
+        ? 'visualViz'  
+        : 'voiceViz';
+
     const parentEl = document.getElementById(parentId);
     const rect = parentEl.getBoundingClientRect();
     resizeCanvas(Math.floor(rect.width), Math.floor(rect.height));
@@ -863,3 +895,5 @@ function renderMeydaVisualiser() {
     textAlign(LEFT, BOTTOM);
     text('Playing (Meyda)', 10, height - 8);
 }
+
+// VOICE CONTROLELR

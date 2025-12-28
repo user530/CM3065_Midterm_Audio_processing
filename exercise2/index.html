@@ -9,6 +9,7 @@
     <!-- p5 -->
     <script src="https://cdn.jsdelivr.net/npm/p5@1.11.11/lib/p5.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/p5@1.11.11/lib/addons/p5.sound.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/IDMNYU/p5.js-speech@0.0.3/lib/p5.speech.js"></script>
 </head>
 
 <body>
@@ -22,7 +23,7 @@
                         <div class="row" id="modeRow">
                         <button id="btnModeCaptcha">2.1 Captcha</button>
                         <button id="btnModeVisual" class="secondary">2.2 Visualiser</button>
-                        <button id="btnModeVoice" class="secondary" disabled>2.3 Voice (soon)</button>
+                        <button id="btnModeVoice" class="secondary">2.3 Voice</button>
                     </div>
                     <div class="row small-text" id="appStatus">Status: UI loaded.</div>
                 </div>
@@ -120,8 +121,46 @@
             <!-- 2.3 VOICE CONTROLLER PANEL -->
             <section class="card" id="panelVoice" style="display:none;">
                 <div class="column">
-                    <h2>2.3 Voice Controller</h2>
-                    <div class="small-text">PLACEHOLDER</div>
+                    <div class="row between">
+                        <div class="column tight">
+                            <h2>2.3 Voice Controller</h2>
+                            <div class="small-text">Voice commands (p5.speech) control background colour and generated shape.</div>
+                        </div>
+
+                        <div class="row">
+                            <button id="btnVoiceStart">Start Listening</button>
+                            <button id="btnVoiceStop" class="secondary">Stop</button>
+                        </div>
+                    </div>
+
+                    <div class="effect column">
+                        <div class="row between">
+                            <div class="small-text"><b>[Visualise]</b> Voice-controlled visualisation (Task 2.3).</div>
+                            <div class="small-text mono" id="voiceLabel">—</div>
+                        </div>
+                        <div id="voiceViz" class="vizBox"></div>
+                    </div>
+
+                    <div class="grid">
+                        <div class="effect column">
+                            <h3>Supported commands</h3>
+                            <div class="small-text mono">
+                                Colours: black, white, red, blue, green<br/>
+                                Shapes: square, triangle, circle, pentagon
+                            </div>
+                        </div>
+
+                        <div class="effect column">
+                            <h3>Recognition monitor</h3>
+                            <div class="small-text mono" id="voiceHeard">Heard: —</div>
+                            <div class="small-text mono" id="voiceAction">Action: —</div>
+                        </div>
+                    </div>
+
+                    <div class="effect column">
+                        <h3>Audio file</h3>
+                        <div class="small-text mono" id="voiceTrackLabel">Kalte_Ohren_(Remix).mp3</div>
+                    </div>
                 </div>
             </section>
         </div>
