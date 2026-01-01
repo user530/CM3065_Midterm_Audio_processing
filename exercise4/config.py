@@ -15,3 +15,6 @@ LANG_FOLDERS = {
     'it': 'IT',
     'es': 'ES',
 }
+
+# Recommended Vosk sample rate, Hz
+VOSK_SR = 16000

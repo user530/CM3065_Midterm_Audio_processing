@@ -1,6 +1,6 @@
-from config import ASSETS_DIR, MODELS_DIR
+from config import ASSETS_DIR, MODELS_DIR, VOSK_SR
 from dsp.utils import find_any_wav, log_audio_meta
-from dsp.audio import load_audio, ensure_mono
+from dsp.audio import load_audio, ensure_mono, preprocess_audio
 from asr.vosk_asr import load_model
 
 def main():
@@ -18,19 +18,24 @@ def main():
         print(f'{lang.upper()} example wav: {lang_wav}')
 
         # Load sample wav
-        audio, samplerate = load_audio(lang_wav)
+        raw_audio, raw_sr = load_audio(lang_wav)
 
         # Transform to mono
-        mono_audio = ensure_mono(audio)
+        raw_mono = ensure_mono(raw_audio)
 
-        # Log metadata
-        log_audio_meta(lang_wav, mono_audio, samplerate)
+        # Log raw file metadata
+        log_audio_meta(lang_wav, raw_mono, raw_sr)
+
+        # Preprocess audio
+        prcsd_audio, prcsd_sr = preprocess_audio(lang_wav, target_sr=VOSK_SR, normalize=True)
+
+        # Log processed file metadata
+        prcsd_label = lang_wav + f'(preprocessed @ ${VOSK_SR})'
+        log_audio_meta(prcsd_label, prcsd_audio, prcsd_sr)
 
         # Load model
         print(f'Trying to load model for {lang.upper()} language...')
-
-        model = load_model(lang)
-
+        load_model(lang)
         print(f'Model {lang.upper()} loaded - OK.')
 
 
