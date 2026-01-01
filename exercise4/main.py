@@ -1,7 +1,7 @@
 from config import ASSETS_DIR, MODELS_DIR, VOSK_SR
 from dsp.utils import find_any_wav, log_audio_meta
-from dsp.audio import load_audio, ensure_mono, preprocess_audio
-from asr.vosk_asr import load_model
+from dsp.audio import load_audio, ensure_mono, preprocess_audio, to_int16_wav_bytes
+from asr.vosk_asr import load_model, transcribe_int16_wav
 
 def main():
     print('=== Exercise 4 checks ===')
@@ -35,11 +35,19 @@ def main():
 
         # Load model
         print(f'Trying to load model for {lang.upper()} language...')
-        load_model(lang)
+        model = load_model(lang)
         print(f'Model {lang.upper()} loaded - OK.')
 
+        # Cast float to int16 byte stream
+        int16_wav = to_int16_wav_bytes(prcsd_audio)
 
-    print('\nAudio files loaded. Models loaded. Application is ready for work!')
+        # Get transcription
+        transcription = transcribe_int16_wav(model, int16_wav, prcsd_sr)
+
+        print(f'ASR transcription for {lang_wav}: {transcription}')
+
+
+    print('\nAudio files loaded. Models loaded. Test ASR completed. Application is ready for work!')
 
 if __name__ == '__main__':
     main()

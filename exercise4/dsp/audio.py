@@ -87,3 +87,16 @@ def preprocess_audio(file_path: str, target_sr: int, normalize: bool = True) -> 
         resampled = _normalize_peak(resampled)
 
     return resampled, target_sr
+
+
+def to_int16_wav_bytes(audio: np.ndarray) -> bytes:
+    '''
+    Speech recognizer accepts 16 bit audio byets, so we need to conver our float to int16.
+    [https://stackoverflow.com/questions/59463040/how-can-i-convert-a-numpy-array-wav-data-to-int16-with-python]
+    '''
+    # Limit amplitude
+    audio = np.clip(audio, -1.0, 1.0)
+    # Convert float32 to int16
+    int16 = (audio * 32767.0).astype(np.int16)
+
+    return int16.tobytes()

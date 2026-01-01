@@ -1,6 +1,7 @@
 import os
 from config import LANG_FOLDERS, MODELS_DIR
-from vosk import Model
+from vosk import Model, KaldiRecognizer
+import json
 
 def load_model(lang: str) -> Model:
     '''
@@ -23,3 +24,19 @@ def load_model(lang: str) -> Model:
 
     return vosk_model
 
+
+def transcribe_int16_wav(model, int16_bytes: bytes, samplerate: int) -> str:
+    '''
+    Feed 16 bit audio bytes (instead of streaming) into Vosk recognizer and return transcribed text.
+    '''
+    recognizer = KaldiRecognizer(model, samplerate)
+
+    # "Emulate" streaming  by chunking audio bytes (4kb)
+    CHUNK_SIZE = 4 * 1024
+    for i in range(0, len(int16_bytes), CHUNK_SIZE):
+        recognizer.AcceptWaveform(int16_bytes[i:i + CHUNK_SIZE])
+
+    # Read result and extract text content (transcription)
+    result = json.loads(recognizer.FinalResult())
+
+    return result.get('text', '').strip()
