@@ -38,15 +38,17 @@ def _apply_noise_gate(
     audio: np.ndarray,
     freq: int,
     frame_ms: float = 20.0,
-    gate_db: float = -35.0,
-    attenuation_mult: float = 0.2
+    gate_db: float = -45.0,
+    attenuation_mult: float = 0.5,
+    noise_percentile: float = 15.0,
+    noise_floor_mult: float = 1.2,
 ) -> np.ndarray:
     '''
     Simple noise gate (reduce noise beloow threshold) using per-frame root mean square (RMS).
     This function:
     - Splits audio into short frames (~20 ms)
     - Compute RMS per frame
-    - Estimate 'noise floor' from the lower percentile RMS
+    - Estimate 'noise floor' from the RMS percentile
     - If frame RMS is close to noise floor, reduce it (but not reduce to zero)
 
     gate_db:
@@ -66,14 +68,14 @@ def _apply_noise_gate(
     # Calculate RMS for each frame
     rms = np.sqrt(np.mean(frames**2, axis=1) + 1e-12)
 
-    # Estimate noise floor as a low percentile
-    noise_floor = np.percentile(rms, 20)
+    # Estimate noise floor as a percentile
+    noise_floor = np.percentile(rms, noise_percentile)
 
     # Convert gate in decibele relative threshold (dBFS) into linear value
     gate_lin = 10 ** (gate_db / 20.0)
 
     # Calculate conservative threshold using noise floor + fixed gate
-    threshold = max(noise_floor * 1.5, gate_lin)
+    threshold = max(noise_floor * noise_floor_mult, gate_lin)
 
     # Prepare gains and reduce ones that bellow RMS
     gains = np.ones_like(rms, dtype=np.float32)

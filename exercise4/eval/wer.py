@@ -116,8 +116,10 @@ def build_hypotheses_from_assets_vosk(
     '''
     hypotheses: dict[Transcript_Key, str] = {}
 
-    # Iterate over each language/folder pair
-    for lang, folder in LANG_FOLDERS.items():
+    # Iterate over each supported language
+    for lang in models.keys():
+        # Get folder name
+        folder = LANG_FOLDERS[lang]
         # Construct directory for the said language
         lang_dir = os.path.join(assets_dir, folder)
 
