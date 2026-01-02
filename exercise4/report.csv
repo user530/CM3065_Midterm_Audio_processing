@@ -1,16 +1,8 @@
 Language,File,WER,Reference,Hypothesis
 English,checkin.wav,0.0%,Where is the check in desk?,where is the check in desk
+English,my_sentence_1.wav,14.3%,Is there a place to relax here?,is there a place to relax yeah
+English,my_sentence_2.wav,16.7%,Can I charge my phone here?,can they charge my phone here
 English,parents.wav,20.0%,I have lost my parents.,i lost my parents
 English,suitcase.wav,16.7%,"Please, I have lost my suitcase.",please have lost my suitcase
 English,what_time.wav,0.0%,What time is my plane?,what time is my plane
 English,where.wav,0.0%,Where are the restaurants and shops?,where are the restaurants and shops
-Spanish,checkin_es.wav,0.0%,¿Dónde están los mostradores?,dónde están los mostradores
-Spanish,parents_es.wav,0.0%,He perdido a mis padres.,he perdido a mis padres
-Spanish,suitcase_es.wav,0.0%,"Por favor, he perdido mi maleta.",por favor he perdido mi maleta
-Spanish,what_time_es.wav,66.7%,¿A qué hora es mi avión?,y ahora es mi helio
-Spanish,where_es.wav,14.3%,¿Dónde están los restaurantes y las tiendas?,dónde están los restaurantes las tiendas
-Italian,checkin_it.wav,0.0%,Dove è il bancone?,dove è il bancone
-Italian,parents_it.wav,0.0%,Ho perso i miei genitori.,ho perso i miei genitori
-Italian,suitcase_it.wav,0.0%,"Per favore, ho perso la mia valigia.",per favore ho perso la mia valigia
-Italian,what_time_it.wav,14.3%,A che ora è il mio aereo?,a che ora il mio aereo
-Italian,where_it.wav,14.3%,Dove sono i ristoranti e i negozi?,dove sono i ristoranti e negozi

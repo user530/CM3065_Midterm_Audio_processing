@@ -87,7 +87,7 @@ def main():
     # Build hypotheses dict by running ASR over assets
     hypotheses = build_hypotheses_from_assets_vosk(models, use_denoise=args.useDenoise)
 
-    # 4) Compare ASR output to transcriptions
+    # Compare ASR output to transcriptions
     rows = evaluate_transcriptions(hypotheses, references)
 
     # Print debug per sample
@@ -98,7 +98,7 @@ def main():
     if not args.noOutput:
         write_results_table(rows)
 
-    # 5) Agregate results across across all languages and grouping by language
+    # Agregate results across across all languages and grouping by language
     overall = aggregate_corpus(rows)
     by_lang = aggregate_by_lang(rows)
 

@@ -6,6 +6,10 @@ import json
 def load_model(lang: str) -> Model:
     '''
     Load existing offline Vosk model for specified language
+    I used following models for the testing and report:
+    [EN]: https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip
+    [ES]: https://alphacephei.com/vosk/models/vosk-model-small-es-0.42.zip
+    [IT]: https://alphacephei.com/vosk/models/vosk-model-small-it-0.22.zip
     '''
     folder = LANG_FOLDERS[lang]
     path = os.path.join(MODELS_DIR, folder)
