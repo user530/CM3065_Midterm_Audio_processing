@@ -10,6 +10,7 @@ from eval.wer import (
 )
 import argparse
 import vosk
+from dsp.utils import write_results_table
 
 
 def parse_args():
@@ -44,6 +45,13 @@ def parse_args():
         help='Print verbose VOSK log',
     )
 
+    # Toggle output table
+    parser.add_argument(
+        '--noOutput',
+        action='store_true',
+        help='Skip creating output report file with WER table',
+    )
+
     return parser.parse_args()
 
 
@@ -68,6 +76,7 @@ def main():
     print(f'Denoise usage: {args.useDenoise}')
     print(f'Log ASR per sample: {args.debugASR}')
     print(f'Log VoskApi messages: {args.debugVosk}')
+    print(f'Skip output report: {args.noOutput}')
 
     # Load references
     references = load_transcriptions(TRANSCRIPT_CSV_PATH)
@@ -84,6 +93,10 @@ def main():
     # Print debug per sample
     if args.debugASR:
         print_sample_debug(rows)
+
+    # Write report file
+    if not args.noOutput:
+        write_results_table(rows)
 
     # 5) Agregate results across across all languages and grouping by language
     overall = aggregate_corpus(rows)

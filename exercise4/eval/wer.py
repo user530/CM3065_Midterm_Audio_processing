@@ -175,11 +175,11 @@ def aggregate_by_lang(rows: list[dict]) -> dict[str, dict]:
 
 def print_sample_debug(rows):
     print('\n=== Per-sample debug ===')
-    for r in rows:
+    for row in rows:
         print('-' * 30)
-        print(f'Lang    : {r['lang']}')
-        print(f'File    : {r['filename']}')
-        print(f'REF     : {r['ref']}')
-        print(f'HYP     : {r['hyp']}')
-        print(f'S/D/I/N : {r['S']} / {r['D']} / {r['I']} / {r['N']}')
-        print(f'WER     : {r['wer']:.4f}')
+        print(f'Lang    : {row['lang']}')
+        print(f'File    : {row['filename']}')
+        print(f'REF     : {row['ref']}')
+        print(f'HYP     : {row['hyp']}')
+        print(f'S/D/I/N : {row['S']} / {row['D']} / {row['I']} / {row['N']}')
+        print(f'WER     : {row['wer']:.4f}')
