@@ -171,3 +171,15 @@ def aggregate_by_lang(rows: list[dict]) -> dict[str, dict]:
         buckets[r['lang']].append(r)
 
     return {lang: aggregate_corpus(items) for lang, items in buckets.items()}
+
+
+def print_sample_debug(rows):
+    print('\n=== Per-sample debug ===')
+    for r in rows:
+        print('-' * 30)
+        print(f'Lang    : {r['lang']}')
+        print(f'File    : {r['filename']}')
+        print(f'REF     : {r['ref']}')
+        print(f'HYP     : {r['hyp']}')
+        print(f'S/D/I/N : {r['S']} / {r['D']} / {r['I']} / {r['N']}')
+        print(f'WER     : {r['wer']:.4f}')

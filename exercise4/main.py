@@ -6,8 +6,10 @@ from eval.wer import (
     evaluate_transcriptions,
     aggregate_corpus,
     aggregate_by_lang,
+    print_sample_debug,
 )
 import argparse
+import vosk
 
 
 def parse_args():
@@ -28,11 +30,28 @@ def parse_args():
         help='Enable denoise pipeline (bandpass + noise gate)',
     )
 
+    # Toggle extended log
+    parser.add_argument(
+        '--debugASR',
+        action='store_true',
+        help='Print reference and hypothesis for each evaluated audio file',
+    )
+
+    # Toggle extended VOSK log
+    parser.add_argument(
+        '--debugVosk',
+        action='store_true',
+        help='Print verbose VOSK log',
+    )
+
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
+
+    # Setup Vosk log level (default silent)
+    vosk.SetLogLevel(1 if args.debugVosk else -1)
 
     # Validate langs
     langs = [lang.strip().lower() for lang in args.langs]
@@ -47,6 +66,8 @@ def main():
     print(f'Models folder: {MODELS_DIR}')
     print(f'Languages: {langs}')
     print(f'Denoise usage: {args.useDenoise}')
+    print(f'Log ASR per sample: {args.debugASR}')
+    print(f'Log VoskApi messages: {args.debugVosk}')
 
     # Load references
     references = load_transcriptions(TRANSCRIPT_CSV_PATH)
@@ -59,6 +80,10 @@ def main():
 
     # 4) Compare ASR output to transcriptions
     rows = evaluate_transcriptions(hypotheses, references)
+
+    # Print debug per sample
+    if args.debugASR:
+        print_sample_debug(rows)
 
     # 5) Agregate results across across all languages and grouping by language
     overall = aggregate_corpus(rows)
