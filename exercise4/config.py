@@ -18,3 +18,6 @@ LANG_FOLDERS = {
 
 # Recommended Vosk sample rate, Hz
 VOSK_SR = 16000
+
+# Transcription file
+TRANSCRIPT_CSV_PATH = os.path.join(BASE_DIR, 'transcriptions.csv')

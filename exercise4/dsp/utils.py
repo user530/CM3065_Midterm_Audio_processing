@@ -29,3 +29,19 @@ def log_audio_meta(label: str, audio, samplerate: int):
     print(f'   sample rate: {samplerate} Hz')
     print(f'   shape: {audio.shape}')
     print(f'   duration: {duration_sec:.2f} s')
+
+
+def list_lang_wavs(lang_key: str) -> list[str]:
+    '''
+    Return all WAV files for a language key in specifid assets/<LANG_FOLDER>.
+    '''
+    lang_folder = LANG_FOLDERS[lang_key]
+    wav_dir = os.path.join(ASSETS_DIR, lang_folder)
+    wav_files = glob.glob(os.path.join(wav_dir, '*.wav'))
+    wavs = sorted(wav_files)
+
+    # Guard clause
+    if not wavs:
+        raise FileNotFoundError(f'No WAV files found in: {wav_dir}')
+
+    return wavs
